@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>金春喜 食譜成本</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+<style>
+[hidden]{display:none!important}
+body{margin:0}
+
+/* Layout: sticky top bar with two tabs; a working list/table below, editor opens as its own page; wide tables scroll, phone turns rows into cards. */
+:root{
+  --bg:#f2f3f6; --surface:#ffffff; --surface2:#eaedf2; --line:#d6dae2; --fg:#1a1e26; --muted:#5b6474;
+  --accent:#2c5cc5; --accent-fg:#ffffff; --good:#1c7a51; --warn:#8f6400; --crit:#b3352d;
+  --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-display:"Noto Serif TC","Songti TC",serif;
+  --font-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12151b; --surface:#1a1e26; --surface2:#232832; --line:#303644; --fg:#e8eaee; --muted:#9aa3b2;
+  --accent:#7fa3ee; --accent-fg:#0d1424; --good:#58c391; --warn:#e4b24c; --crit:#f07d74; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151b; --surface:#1a1e26; --surface2:#232832; --line:#303644; --fg:#e8eaee; --muted:#9aa3b2;
+  --accent:#7fa3ee; --accent-fg:#0d1424; --good:#58c391; --warn:#e4b24c; --crit:#f07d74; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.5;margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+.wrap{max-width:1360px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .in{max-width:1360px;margin:0 auto;display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.brand{font-family:var(--font-display);font-weight:700;font-size:18px;letter-spacing:.04em;white-space:nowrap}
+.brand small{font-family:var(--font-body);font-weight:400;font-size:12px;color:var(--muted);margin-left:8px;letter-spacing:0}
+nav{display:flex;gap:4px}
+nav a{padding:6px 14px;border-radius:6px;color:var(--muted);text-decoration:none;font-weight:500}
+nav a[aria-current="page"]{background:var(--surface2);color:var(--fg)}
+nav a:hover{color:var(--fg)}
+.status{margin-left:auto;font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--good)} .dot.busy{background:var(--warn)} .dot.err{background:var(--crit)}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}
+h2{font-size:20px} h3{font-size:15px;font-family:var(--font-body);font-weight:700}
+.sec{margin-top:24px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:20px 0 12px}
+.bar .grow{flex:1 1 220px;min-width:0}
+input,select,textarea,button{font:inherit;color:inherit}
+.field{width:100%;min-width:0;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg)}
+textarea.field{resize:vertical;min-height:96px;line-height:1.6}
+.field:focus,.cell:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{padding:7px 14px;border:1px solid var(--line);border-radius:6px;background:var(--surface);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.danger{color:var(--crit)} .btn.danger.arm{background:var(--crit);border-color:var(--crit);color:var(--surface)}
+.btn.sm{padding:3px 9px;font-size:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:4px 12px;border:1px solid var(--line);border-radius:99px;background:transparent;cursor:pointer;font-size:13px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.stats{display:flex;gap:28px;flex-wrap:wrap;margin:20px 0 4px}
+.stat b{display:block;font-family:var(--font-num);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;border:1px solid currentColor}
+.pill.ok{color:var(--good)} .pill.warn{color:var(--warn)} .pill.crit{color:var(--crit)} .pill.none{color:var(--muted)}
+/* recipe list */
+.rlist{overflow:hidden}
+.rh,.rr{display:grid;grid-template-columns:minmax(0,1fr) 90px 90px 150px;gap:12px;align-items:center;padding:10px 16px}
+.rh{font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--surface2)}
+.rr{border-bottom:1px solid var(--line);color:inherit;text-decoration:none}
+.rr:last-child{border-bottom:0} .rr:hover{background:var(--surface2)}
+.rr .nm{font-weight:500;min-width:0;overflow-wrap:anywhere} .rr .nm small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;text-align:right}
+.rr .num,.rh .num{white-space:nowrap}
+.empty{padding:48px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--fg);font-size:16px;margin-bottom:6px}
+/* editor */
+.crumb{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0 6px}
+.crumb a{color:var(--accent);text-decoration:none} .crumb .sp{flex:1}
+.title-in{width:100%;border:0;border-bottom:2px solid var(--line);background:transparent;font-family:var(--font-display);font-weight:700;font-size:26px;padding:6px 0;color:var(--fg)}
+.title-in:focus{outline:none;border-color:var(--accent)}
+.meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin:16px 0}
+.meta label,.lbl{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+.sum{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 18px;align-items:flex-start}
+.sum>.tile{flex:1 1 170px}.sum>.prices{flex:3 1 400px}
+.tile{padding:14px 16px}
+.tile .k{font-size:12px;color:var(--muted)} .tile .v{font-family:var(--font-num);font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.3}
+.tile .h{font-size:12px;color:var(--muted)}
+.prices{padding:6px 14px 12px}
+.prow{display:grid;grid-template-columns:minmax(80px,1fr) 88px 118px 88px 30px;gap:10px;align-items:center;padding:5px 0}
+.prow .num{text-align:right}
+.tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.lt{border-collapse:collapse;width:100%;min-width:1240px}
+.lt th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:8px 4px;border-bottom:1px solid var(--line);background:var(--surface2);white-space:nowrap;position:sticky;top:0}
+.lt td{padding:2px 2px;border-bottom:1px solid var(--line);vertical-align:middle}
+.lt tr:last-child td{border-bottom:0}
+.lt td.idx{color:var(--muted);text-align:center;width:30px;font-variant-numeric:tabular-nums;font-size:12px}
+.cell{width:100%;min-width:0;border:1px solid transparent;border-radius:4px;background:transparent;padding:6px 6px;color:var(--fg)}
+.cell:hover{border-color:var(--line)} .cell:focus{background:var(--surface);border-color:transparent}
+.cell.n{text-align:right;font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.cell.linked{color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,transparent);cursor:default}
+.cell.sel{appearance:auto;cursor:pointer;text-overflow:ellipsis}
+.lk{font-size:11px;color:var(--accent);display:flex;align-items:center;gap:2px;padding:0 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.lk .xbtn{padding:0 4px;font-size:13px}
+.out{font-family:var(--font-num);text-align:right;font-variant-numeric:tabular-nums;padding:0 8px;white-space:nowrap}
+.out.amt{font-weight:500}
+.lt tfoot td{border-top:1px solid var(--line);background:var(--surface2);padding:10px 8px;font-weight:500}
+.xbtn{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:4px}
+.xbtn:hover{color:var(--crit)}
+.sub{margin-top:16px}
+.sub .hd{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.sub .hd .field{max-width:320px}
+.note{font-size:12px;color:var(--muted)}
+.banner{margin:14px 0;padding:10px 14px;border:1px solid var(--warn);border-radius:8px;color:var(--warn)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;max-width:92vw}
+.mt{min-width:980px}
+.mt td .cell{padding:5px 6px}
+.mt td.use{text-align:center;color:var(--muted);width:70px}
+/* dashboard */
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-top:16px}
+.dgrid>.card{padding:16px 18px;min-width:0}
+.dgrid h3{margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.dgrid h3 small{font-weight:400;font-size:12px;color:var(--muted)}
+.bars .b{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr) 92px;gap:10px;align-items:center;padding:3px 0;color:inherit;text-decoration:none}
+.bars a.b:hover .nm2{color:var(--accent)}
+.nm2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.track{position:relative;height:14px;background:var(--surface2);border-radius:3px}
+.fill{height:100%;border-radius:3px;background:currentColor;opacity:.85}
+.tmark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--fg);opacity:.7}
+.bars .ok{color:var(--good)}.bars .warn{color:var(--warn)}.bars .crit{color:var(--crit)}
+.bars .v{font-family:var(--font-num);font-size:12px;text-align:right;color:var(--fg);white-space:nowrap}
+.legend{font-size:12px;color:var(--muted);margin-top:8px}
+table.simple{width:100%;border-collapse:collapse}
+table.simple th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+table.simple td{padding:6px;border-bottom:1px solid var(--line)}
+table.simple tr:last-child td{border-bottom:0}
+.wide-card{grid-column:1/-1}
+.ltbl td{vertical-align:middle}
+.ltbl .field{padding:4px 8px}
+.diff.up{color:var(--crit)}.diff.dn{color:var(--good)}
+@media (max-width:820px){
+  .dgrid{grid-template-columns:minmax(0,1fr)}
+  .bars .b{grid-template-columns:minmax(0,1fr) 84px}.bars .b .nm2{grid-column:1/-1}.bars .b .track{grid-column:1}
+  .ltbl thead{display:none}.ltbl,.ltbl tbody,.ltbl tr,.ltbl td{display:block}
+  .ltbl tr{padding:10px 0;border-bottom:1px solid var(--line)}.ltbl td{padding:2px 0;border:0}
+  .ltbl td::before{content:attr(data-l);display:block;font-size:11px;color:var(--muted)}
+}
+@media (max-width:820px){
+  .rh{display:none}
+  .rr{grid-template-columns:minmax(0,1fr) auto;row-gap:4px}
+  .rr .nm{grid-column:1/-1}
+  .rr .num{text-align:left}
+  .rr .num::before{content:attr(data-l) " ";font-family:var(--font-body);font-size:11px;color:var(--muted)}
+  .rr .rate{grid-column:2;grid-row:2;text-align:right}
+  .tscroll{border:0;background:transparent;overflow:visible}
+  table.lt{min-width:0}
+  .lt thead{display:none}
+  .lt,.lt tbody,.lt tfoot{display:block}
+  .lt tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--surface)}
+  .lt td{display:block;padding:0;border:0}
+  .lt td::before{content:attr(data-l);display:block;font-size:11px;color:var(--muted)}
+  .lt td.idx{display:none} .lt td.wide{grid-column:1/-1}
+  .lt td.x{grid-column:1/-1;text-align:right} .lt td.x::before{display:none}
+  .lt .cell{border-color:var(--line);background:var(--surface)}
+  .out{text-align:left;padding:6px 0}
+  .lt tfoot tr{display:flex;justify-content:space-between;background:var(--surface2)}
+  .lt tfoot td::before{display:none}
+  .prow{grid-template-columns:1fr 1fr;} .prow .num{text-align:left}
+  .mt{min-width:0}
+  .mt td.use{width:auto;text-align:left}
+  .title-in{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <a class="brand" href="#dashboard" style="color:inherit;text-decoration:none">金春喜<small>食譜成本輸入</small></a>
+  <nav aria-label="主選單"><a href="#dashboard" id="nav-dashboard">儀表板</a><a href="#recipes" id="nav-recipes">食譜</a><a href="#master" id="nav-master">原料單價</a></nav>
+  <div class="status" id="status" role="status"><span class="dot busy" id="dot"></span><span id="stxt">未登入</span><button class="btn sm" id="logout" hidden>登出</button></div>
+</div></header>
+<main class="wrap" id="app"></main>
+<datalist id="dl-master"></datalist>
+<datalist id="dl-unit"><option value="g"><option value="cc"><option value="p"><option value="顆"><option value="片"><option value="ml"></datalist>
+<div id="toast" class="toast" hidden></div>
+<script>
+/* ★ 部署 Code.gs 後，把「網頁應用程式網址」（結尾 /exec）貼在下面 */
+const API_URL='請貼上 Apps Script 部署網址';
+</script>
+<script>
+"use strict";
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const S={db:null,user:null,canWrite:false,master:new Map(),recipes:new Map(),got:{m:false,r:false},cur:null,curId:null,
+  ver:0,savedVer:0,saving:false,timer:null,savedJson:'',q:'',group:'',sort:'name',mq:'',mcat:'',mrendered:'',focusMid:null,timeout:false,arm:{},dashSel:{},applying:false,pw:'',role:'',lastVer:0,poll:null,freeName:new Set(),freeSup:new Set()};
+let LISTS={names:'',sup:[]};
+function buildLists(){
+  const by=new Map();for(const m of [...S.master.values()].filter(m=>m.name).sort((a,b)=>(a.order||0)-(b.order||0))){const c=m.cat||'未分類';(by.get(c)||by.set(c,[]).get(c)).push(m)}
+  LISTS.names=[...by].map(([c,ms])=>`<optgroup label="${esc(c)}">${ms.map(m=>`<option value="${esc(m.id)}">${esc(masterLabel(m))}</option>`).join('')}</optgroup>`).join('');
+  const sup=new Set();for(const m of S.master.values())if(m.vendor)sup.add(m.vendor);
+  for(const r of S.recipes.values())for(const L of [...(r.lines||[]),...(r.subs||[]).flatMap(b=>b.lines||[])])if(L.supplier)sup.add(L.supplier);
+  LISTS.sup=[...sup].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+const AREA=$('#app');
+
+/* ---------- calculation (same formulas as the Excel sheets) ---------- */
+function resolve(L,k){
+  if(L.link&&L.link.field===k){const m=S.master.get(L.link.id);if(m&&m.price!=null)return m.price;}
+  return L[k]==null||L[k]===''?0:+L[k];
+}
+function unitCost(L){
+  const y=+L.yield; if(!y)return null;
+  const cap=+L.cap||0;
+  return resolve(L,'kg')/y/1000+resolve(L,'jin')/y/600+(cap?resolve(L,'pc')/cap/y:0);
+}
+function amount(L){
+  if(L.fixed!=null&&L.fixed!=='')return +L.fixed||0;
+  const u=unitCost(L); if(u==null||L.qty==null||L.qty==='')return 0;
+  return u*(+L.qty);
+}
+const sumLines=a=>(a||[]).reduce((t,L)=>t+amount(L),0);
+const primaryPrice=r=>{const p=(r.prices||[]).filter(x=>+x.price>0);return p.find(x=>x.label==='定價')||p[0]||null};
+function rateClass(rate,target){
+  if(rate==null)return['none','未定價'];
+  const t=target||0.3;
+  if(rate<=t+1e-9)return['ok','達標'];
+  if(rate<=t+0.05)return['warn','偏高'];
+  return['crit','超標'];
+}
+const money=(v,d=1)=>v==null||isNaN(v)?'—':'$'+(+v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=(v,d=1)=>v==null||isNaN(v)?'—':(v*100).toFixed(d)+'%';
+const stable=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v);
+
+/* ---------- status / toast ---------- */
+function setStatus(kind,text){$('#dot').className='dot'+(kind?' '+kind:'');$('#stxt').textContent=text}
+let toastT;function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,3500)}
+const hhmm=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+
+/* ---------- data ---------- */
+function blankLine(){return{name:'',qty:null,unit:'g',kg:null,jin:null,pc:null,cap:null,yield:1,brand:'',supplier:'',note:''}}
+function rocNow(){const d=new Date();return (d.getFullYear()-1911)+'.'+String(d.getMonth()+1).padStart(2,'0')}
+function newRecipe(){return{name:'',group:S.group||'',servings:1,date:rocNow(),designer:'',maker:'',time:null,targetRate:0.3,prices:[{label:'定價',price:null}],sop:'',kind:'recipe',
+  lines:Array.from({length:6},blankLine),subs:[],order:Date.now()}}
+function clean(o){return JSON.parse(JSON.stringify(o,(k,v)=>typeof v==='number'&&!isFinite(v)?null:v))}
+function masterLabel(m){return (m.name+(m.spec?' '+m.spec:'')).trim()}
+function usage(){const u=new Map();for(const r of S.recipes.values()){const all=[...(r.lines||[]),...(r.subs||[]).flatMap(b=>b.lines||[])];for(const L of all){if(L.link)u.set(L.link.id,(u.get(L.link.id)||0)+1)}}return u}
+function parseCap(spec){const m=String(spec||'').match(/(\d+(?:\.\d+)?)\s*(kg|k|g|cc|ml|l)\b/i);if(!m)return null;let n=parseFloat(m[1]);const u=m[2].toLowerCase();if(u==='kg'||u==='k'||u==='l')n*=1000;return n}
+
+/* ---------- API（Google Apps Script） ---------- */
+const API={async call(action,payload={}){
+  let r;try{r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,pw:S.pw,...payload})})}
+  catch(e){const x=new Error('連不上伺服器，請檢查網路');x.code='network';throw x}
+  let j;try{j=await r.json()}catch(e){const x=new Error('伺服器回應格式錯誤，請確認 API_URL 是 /exec 結尾的部署網址');x.code='bad_response';throw x}
+  if(!j.ok){const x=new Error(j.error||'失敗');x.code=j.code||'error';throw x}
+  if(j.ver!=null)S.lastVer=j.ver;
+  return j}};
+function after(col){clearTimeout(after.t);after.t=setTimeout(()=>onData(col==='recipes'?'r':'m'),0)}
+S.db={
+  doc(path){const[col,id]=path.split('/');const cache=()=>col==='recipes'?S.recipes:S.master;
+    const put=async d=>{const item={id,...d};await API.call(col==='recipes'?'saveRecipe':'saveMaster',col==='recipes'?{recipe:item}:{item});cache().set(id,item);after(col)};
+    return{set:put,update:async p=>put({...stripId(cache().get(id)||{}),...p}),
+      delete:async()=>{await API.call(col==='recipes'?'deleteRecipe':'deleteMaster',{id});cache().delete(id);after(col)}}},
+  async setMany(docs){await API.call('saveRecipes',{recipes:docs});docs.forEach(d=>S.recipes.set(d.id,d));after('recipes')}
+};
+async function loadAll(){
+  const j=await API.call('getAll');
+  S.master=new Map(j.master.map(m=>[m.id,m]));S.recipes=new Map(j.recipes.map(r=>[r.id,r]));
+  S.role=j.role;S.canWrite=j.role==='edit';S.got.m=S.got.r=true;
+}
+function showLogin(msg){
+  AREA.innerHTML=`<div class="card" style="max-width:380px;margin:70px auto;padding:24px"><h2 style="margin-bottom:6px">登入</h2><p class="note" style="margin:0 0 14px">請輸入管理者提供的密碼。</p>
+  <form id="lf"><label class="lbl" for="pw">密碼</label><input class="field" id="pw" type="password" autocomplete="current-password" autofocus>
+  <div id="lerr" class="note" style="color:var(--crit);min-height:20px;margin-top:6px">${esc(msg||'')}</div><button class="btn pri" style="width:100%;margin-top:6px" type="submit">登入</button></form></div>`;
+  $('#lf').onsubmit=async e=>{e.preventDefault();const pw=$('#pw').value;if(!pw)return;$('#lerr').textContent='登入中…';S.pw=pw;
+    try{await loadAll();try{localStorage.setItem('jcx_pw',pw)}catch(x){}start()}
+    catch(x){S.pw='';$('#lerr').textContent=x.code==='auth'?'密碼錯誤':x.message}}};
+function logout(){try{localStorage.removeItem('jcx_pw')}catch(x){}S.pw='';S.got.m=S.got.r=false;S.shown=false;clearInterval(S.poll);location.hash='';showLogin();setStatus('busy','未登入');$('#logout').hidden=true}
+function start(){
+  $('#logout').hidden=false;
+  setStatus('',S.canWrite?'已同步':'唯讀');
+  S.shown=false;route();
+  clearInterval(S.poll);
+  S.poll=setInterval(async()=>{
+    if(document.hidden||S.saving||S.ver!==S.savedVer||S.applying)return;
+    try{const j=await API.call('version');if(j.ver!==S.lastVer){await loadAll();S.lastVer=j.ver;onData('r');onData('m')}}catch(e){}
+  },20000);
+}
+async function boot(){
+  window.addEventListener('hashchange',route);
+  $('#logout').onclick=logout;
+  if(!API_URL||API_URL.startsWith('請貼上')){AREA.innerHTML=`<div class="card empty" style="margin-top:60px"><b>尚未設定後端網址</b>請把 Apps Script 部署後的網址貼到 Index.html 最上方的 API_URL。</div>`;return}
+  let pw='';try{pw=localStorage.getItem('jcx_pw')||''}catch(e){}
+  if(pw){S.pw=pw;try{await loadAll();start();return}catch(x){S.pw='';if(x.code!=='auth'){showLogin(x.message);return}}}
+  showLogin();
+}
+function onData(which){
+  if(!S.shown&&S.got.m&&S.got.r){route();return}
+  if(S.pw)setStatus('', S.canWrite?'已同步':'唯讀');
+  $('#dl-master').innerHTML=[...S.master.values()].sort((a,b)=>(a.order||0)-(b.order||0)).map(m=>`<option value="${esc(masterLabel(m))}">${esc(m.cat||'')} ${esc(m.vendor||'')} $${m.price??''}/${esc(m.unit||'')}</option>`).join('');
+  const v=curView();
+  if(v==='dashboard'){const a=document.activeElement;if(!(a&&a.tagName==='INPUT'&&AREA.contains(a))&&!S.applying)renderDash()}
+  else if(v==='recipes')renderList();
+  else if(v==='master')syncMaster();
+  else if(v==='recipe'){
+    if(S.cur&&which==='r'){
+      const d=S.recipes.get(S.curId);
+      if(d&&!S.saving&&S.ver===S.savedVer&&stable(stripId(d))!==S.savedJson){loadCur(d);renderEditor()}
+    }else if(!S.cur)renderEditor();
+    else updateComputed();
+  }
+}
+const stripId=d=>{const c={...d};delete c.id;return c};
+
+/* ---------- routing ---------- */
+function curView(){const h=location.hash.slice(1)||'dashboard';if(h.startsWith('recipe-'))return 'recipe';return h==='master'?'master':h==='recipes'?'recipes':'dashboard'}
+function route(){
+  const prev=S.cur&&S.curId;
+  if(prev&&curView()!=='recipe'||prev&&location.hash.slice(1)!=='recipe-'+prev){flushNow();S.cur=null;S.curId=null}
+  const v=curView();
+  ['dashboard','recipes','master'].forEach(n=>$('#nav-'+n).setAttribute('aria-current',(v===n||(n==='recipes'&&v==='recipe'))?'page':'false'));
+  $('#nav-master').setAttribute('aria-current',v==='master'?'page':'false');
+  S.mrendered='';S.shown=false;
+  if(!S.db){AREA.innerHTML=`<div class="empty" style="margin-top:60px"><b>需要登入才能使用共享資料</b>請以有編輯權限的帳號開啟此頁。</div>`;return}
+  if(!(S.got.m&&S.got.r)){
+    AREA.innerHTML=S.timeout?`<div class="empty" style="margin-top:60px"><b>資料載入逾時</b>請重新整理頁面。</div>`:`<div class="empty" style="margin-top:60px"><b>載入中…</b>正在讀取食譜與原料單價。</div>`;return}
+  S.shown=true;
+  if(v==='dashboard')renderDash();
+  else if(v==='recipes')renderList();
+  else if(v==='master')renderMaster();
+  else{const id=location.hash.slice(8);const d=S.recipes.get(id);if(!d){S.shown=false;AREA.innerHTML=`<div class="empty" style="margin-top:60px"><b>找不到這份食譜</b><a href="#recipes">回到食譜列表</a></div>`;return}
+    S.curId=id;loadCur(d);renderEditor()}
+}
+function loadCur(d){S.cur=clean(stripId(d));S.cur.lines=S.cur.lines||[];S.cur.subs=S.cur.subs||[];S.cur.prices=S.cur.prices||[];S.cur.sop=Array.isArray(S.cur.sop)?S.cur.sop.join('\n'):(S.cur.sop||'');S.savedJson=stable(clean(S.cur));S.ver=S.savedVer=0}
+
+/* ---------- recipe list ---------- */
+function renderList(){
+  const all=[...S.recipes.values()];
+  const groups=[...new Set(all.map(r=>r.group).filter(Boolean))];
+  const rows=all.map(r=>{const cost=sumLines(r.lines),p=primaryPrice(r),rate=p&&cost?cost/p.price:null;return{r,cost,p,rate}});
+  const q=S.q.trim().toLowerCase();
+  let list=rows.filter(x=>(!S.group||x.r.group===S.group)&&(!q||(x.r.name||'').toLowerCase().includes(q)));
+  const cmp={name:(a,b)=>(a.r.order||0)-(b.r.order||0),rate:(a,b)=>(b.rate??-1)-(a.rate??-1),cost:(a,b)=>b.cost-a.cost};
+  list.sort(cmp[S.sort]);
+  const priced=rows.filter(x=>x.rate!=null);
+  const avg=priced.length?priced.reduce((t,x)=>t+x.rate,0)/priced.length:null;
+  const over=priced.filter(x=>x.rate>(x.r.targetRate||.3)+1e-9).length;
+  AREA.innerHTML=`
+  <div class="stats">
+    <div class="stat"><b>${all.length}</b><span>食譜數</span></div>
+    <div class="stat"><b>${pct(avg)}</b><span>平均成本率</span></div>
+    <div class="stat"><b>${over}</b><span>高於目標成本率</span></div>
+    <div class="stat"><b>${S.master.size}</b><span>原料品項</span></div>
+  </div>
+  <div class="bar">
+    <input class="field grow" id="q" type="search" placeholder="搜尋料理品名" value="${esc(S.q)}" aria-label="搜尋料理品名">
+    <select class="field" id="sort" style="width:auto" aria-label="排序"><option value="name">依原表順序</option><option value="rate">成本率高→低</option><option value="cost">成本高→低</option></select>
+    <button class="btn" id="csv">匯出 CSV</button>
+    ${S.canWrite?'<button class="btn pri" id="newr">＋ 新增食譜</button>':''}
+  </div>
+  <div class="chips" id="chips"><button class="chip" aria-pressed="${!S.group}" data-g="">全部</button>${groups.map(g=>`<button class="chip" aria-pressed="${S.group===g}" data-g="${esc(g)}">${esc(g)}</button>`).join('')}</div>
+  <div class="card rlist sec" style="margin-top:14px">
+    ${list.length?`<div class="rh"><div>料理品名</div><div class="num">成本</div><div class="num">定價</div><div>成本率</div></div>`+list.map(({r,cost,p,rate})=>{const[c,t]=rateClass(rate,r.targetRate);
+      return `<a class="rr" href="#recipe-${esc(r.id)}"><div class="nm">${esc(r.name||'（未命名）')}<small>${esc(r.group||'未分類')} · ${(r.lines||[]).length} 項材料${(r.subs||[]).length?' · '+r.subs.length+' 組附屬配方':''}</small></div>
+      <div class="num" data-l="成本">${money(cost)}</div><div class="num" data-l="定價">${p?money(p.price,0):'—'}</div><div class="rate"><span class="pill ${c}">${rate!=null?pct(rate):'—'} ${t}</span></div></a>`}).join('')
+      :`<div class="empty"><b>${all.length?'沒有符合的食譜':'還沒有食譜'}</b>${all.length?'換個關鍵字或分類試試。':'按「新增食譜」開始輸入，原料單價可從「原料單價」分頁維護。'}</div>`}
+  </div>`;
+  $('#sort').value=S.sort;
+  $('#q').oninput=e=>{S.q=e.target.value;const pos=e.target.selectionStart;renderList();const q=$('#q');q.focus();q.setSelectionRange(pos,pos)};
+  $('#sort').onchange=e=>{S.sort=e.target.value;renderList()};
+  $('#chips').onclick=e=>{const b=e.target.closest('[data-g]');if(b){S.group=b.dataset.g;renderList()}};
+  $('#csv').onclick=()=>exportCsv('食譜成本總覽.csv',[['分類','料理品名','材料數','成本合計','定價','成本率','目標成本率','建議售價'],...list.map(({r,cost,p,rate})=>[r.group||'',r.name||'',(r.lines||[]).length,cost.toFixed(2),p?p.price:'',rate!=null?(rate*100).toFixed(1)+'%':'',((r.targetRate||.3)*100)+'%',cost?Math.round(cost/(r.targetRate||.3)):''])]);
+  const nb=$('#newr');if(nb)nb.onclick=createRecipe;
+}
+async function createRecipe(){
+  const id='r'+Date.now();const r=newRecipe();
+  try{await S.db.doc('recipes/'+id).set(r);location.hash='#recipe-'+id}catch(e){toast('無法新增：'+(e.code||e.message))}
+}
+function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+async function exportCsv(name,rows){
+  const csv='﻿'+rows.map(r=>r.map(c=>{const s=String(c??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(',')).join('\r\n');
+  download(name,csv,'text/csv;charset=utf-8')
+}
+
+/* ---------- recipe editor ---------- */
+function lineRow(path,L,i){
+  const lk=L.link&&S.master.get(L.link.id);
+  const f=(k,n)=>{const linked=L.link&&L.link.field===k&&lk;const v=linked?lk.price:L[k];
+    return `<input class="cell n${linked?' linked':''}" inputmode="decimal" data-p="${path}.${i}.${k}" data-t="n" value="${v==null?'':v}" ${linked?'readonly title="來自原料單價表"':''} aria-label="${n}">`};
+  const yv=L.yield==null?'':Math.round(L.yield*10000)/100;
+  return `<tr data-row="${path}.${i}">
+  <td class="idx">${i+1}</td>
+  <td class="wide" data-l="材料名稱">${S.freeName.has(path+'.'+i)?`<input class="cell" data-p="${path}.${i}.name" data-free="n" data-fpath="${path}.${i}" value="${esc(L.name)}" placeholder="輸入材料名稱" aria-label="材料名稱">`:`<select class="cell sel" data-nsel="${path}.${i}" aria-label="材料名稱">${L.name?`<option value="__cur" selected>${esc(L.name)}</option>`:'<option value="" selected>— 選擇材料 —</option>'}${LISTS.names}<option value="__new">＋ 自行輸入…</option></select>`}${lk?`<div class="lk" title="${esc(masterLabel(lk))}">↳ ${esc(masterLabel(lk))} <button class="xbtn" data-unlink="${path}.${i}" title="取消對應" aria-label="取消對應">×</button></div>`:''}</td>
+  <td data-l="使用量"><input class="cell n" inputmode="decimal" data-p="${path}.${i}.qty" data-t="n" value="${L.qty==null?'':L.qty}" aria-label="使用量"></td>
+  <td data-l="單位"><input class="cell" list="dl-unit" data-p="${path}.${i}.unit" value="${esc(L.unit)}" aria-label="單位" style="width:56px"></td>
+  <td data-l="$ / KG">${f('kg','每公斤單價')}</td><td data-l="$ / 斤">${f('jin','每斤單價')}</td><td data-l="$ / PC">${f('pc','每包單價')}</td>
+  <td data-l="容量">${f('cap','容量')}</td>
+  <td data-l="步留率 %"><input class="cell n" inputmode="decimal" data-p="${path}.${i}.yield" data-t="pct" value="${yv}" aria-label="步留率百分比"></td>
+  <td data-l="實際單價"><div class="out" data-o="unit"></div></td>
+  <td data-l="金額"><div class="out amt" data-o="amt"></div></td>
+  <td data-l="品牌"><input class="cell" data-p="${path}.${i}.brand" value="${esc(L.brand)}" aria-label="品牌"></td>
+  <td data-l="供應商">${S.freeSup.has(path+'.'+i)?`<input class="cell" data-p="${path}.${i}.supplier" data-free="s" data-fpath="${path}.${i}" value="${esc(L.supplier)}" placeholder="輸入供應商" aria-label="供應商">`:`<select class="cell sel" data-ssel="${path}.${i}" aria-label="供應商"><option value="">${L.supplier?'':'— 選擇 —'}</option>${L.supplier&&!LISTS.sup.includes(L.supplier)?`<option value="${esc(L.supplier)}" selected>${esc(L.supplier)}</option>`:''}${LISTS.sup.map(x=>`<option value="${esc(x)}"${x===L.supplier?' selected':''}>${esc(x)}</option>`).join('')}<option value="__new">＋ 新增供應商…</option></select>`}</td>
+  <td data-l="備註"><input class="cell" data-p="${path}.${i}.note" value="${esc(L.note)}" aria-label="備註"></td>
+  <td class="x"><button class="xbtn" data-del="${path}.${i}" aria-label="刪除此列" title="刪除此列">✕</button></td></tr>`;
+}
+function linesTable(path,lines,foot){
+  return `<div class="tscroll"><table class="lt"><thead><tr><th>#</th><th style="min-width:190px">材料名稱</th><th style="width:78px">使用量</th><th>單位</th><th style="width:76px">$ / KG</th><th style="width:76px">$ / 斤</th><th style="width:80px">$ / PC</th><th style="width:76px">容量</th><th style="width:70px">步留率 %</th><th>實際單價</th><th>金額</th><th style="min-width:80px">品牌</th><th style="min-width:120px">供應商</th><th style="min-width:90px">備註</th><th></th></tr></thead>
+  <tbody>${lines.map((L,i)=>lineRow(path,L,i)).join('')}</tbody>
+  <tfoot><tr><td colspan="10" style="text-align:right">${foot}</td><td class="out amt" data-o="${path==='lines'?'total':'sub-'+path}" style="font-size:15px"></td><td colspan="4"></td></tr></tfoot></table></div>
+  <div style="margin-top:8px"><button class="btn sm" data-add="${path}">＋ 新增一列</button></div>`;
+}
+function renderEditor(){
+  const r=S.cur;if(!r)return;buildLists();
+  const groups=[...new Set([...S.recipes.values()].map(x=>x.group).filter(Boolean))];
+  AREA.innerHTML=`
+  <div class="crumb"><a href="#recipes">← 食譜列表</a><span class="sp"></span><span class="note" id="savenote"></span>
+    ${S.canWrite?`<button class="btn sm" id="dup">複製此食譜</button><button class="btn sm danger" id="delr">刪除</button>`:''}</div>
+  ${S.canWrite?'':'<div class="banner">你目前只有檢視權限，無法修改資料。</div>'}
+  <input class="title-in" data-p="name" value="${esc(r.name)}" placeholder="料理品名" aria-label="料理品名">
+  <div class="meta">
+    <div><label for="g">分類</label><input class="field" id="g" list="dl-group" data-p="group" value="${esc(r.group)}"><datalist id="dl-group">${groups.map(g=>`<option value="${esc(g)}">`).join('')}</datalist></div>
+    <div><label for="dt">日期（民國年.月）</label><input class="field" id="dt" data-p="date" value="${esc(r.date)}"></div>
+    <div><label for="ds">設計者</label><input class="field" id="ds" data-p="designer" value="${esc(r.designer)}"></div>
+    <div><label for="mk">製表人</label><input class="field" id="mk" data-p="maker" value="${esc(r.maker)}"></div>
+    <div><label for="sv">份數</label><input class="field num" id="sv" inputmode="decimal" data-p="servings" data-t="n" value="${r.servings??1}"></div>
+    <div><label for="tm">調理工時（分鐘）</label><input class="field num" id="tm" inputmode="decimal" data-p="time" data-t="n" value="${r.time??''}"></div>
+    <div><label for="tr">目標成本率 %</label><input class="field num" id="tr" inputmode="decimal" data-p="targetRate" data-t="pct" value="${Math.round((r.targetRate||.3)*10000)/100}"></div>
+  </div>
+  <div class="sum">
+    <div class="card tile"><div class="k">成本合計</div><div class="v" id="s-total"></div><div class="h" id="s-total-h"></div></div>
+    <div class="card tile"><div class="k">依目標成本率的建議售價</div><div class="v" id="s-sug"></div><div class="h" id="s-sug-h"></div></div>
+    <div class="card prices"><div class="lbl" style="margin-top:10px">定價與成本率</div><div id="prices"></div><button class="btn sm" data-addprice style="margin-top:6px">＋ 新增定價</button></div>
+  </div>
+  <h3 style="margin:22px 0 8px">材料明細</h3>
+  ${linesTable('lines',r.lines,'成本合計')}
+  <div id="subs"></div>
+  <div style="margin-top:14px"><button class="btn sm" data-addsub>＋ 新增附屬配方（醬料、半成品等，不計入上方成本）</button></div>
+  <h3 style="margin:26px 0 8px">製作流程 SOP</h3>
+  <textarea class="field" data-p="sop" placeholder="每行一個步驟">${esc(r.sop)}</textarea>`;
+  renderSubs();renderPrices();updateComputed();applyRO();
+  bindEditor();
+  if(S.focusNew){const t=$(`[data-row="${S.focusNew}"] [data-nsel]`)||$(`[data-row="${S.focusNew}"] [data-p$=".name"]`);if(t)t.focus();S.focusNew=null}
+}
+function renderSubs(){
+  const box=$('#subs');if(!box)return;
+  box.innerHTML=S.cur.subs.map((b,bi)=>`<div class="sub"><div class="hd"><h3>附屬配方</h3><input class="field" data-p="subs.${bi}.title" value="${esc(b.title)}" placeholder="名稱，例如：金沙預拌醬" aria-label="附屬配方名稱"><span class="note">不計入上方成本</span><button class="btn sm danger" data-delsub="${bi}">刪除此配方</button></div>
+  ${linesTable('subs.'+bi+'.lines',b.lines,'小計　／　每單位成本')}</div>`).join('');
+}
+function renderPrices(){
+  const box=$('#prices');if(!box)return;
+  box.innerHTML=S.cur.prices.map((p,i)=>`<div class="prow"><input class="field" data-p="prices.${i}.label" value="${esc(p.label)}" aria-label="定價名稱" placeholder="定價／百貨定價"><input class="field num" inputmode="decimal" data-p="prices.${i}.price" data-t="n" value="${p.price??''}" aria-label="售價" placeholder="售價"><span class="num" data-o="prate-${i}"></span><span class="num" data-o="pgm-${i}"></span><button class="xbtn" data-delprice="${i}" aria-label="刪除此定價">✕</button></div>`).join('')||'<div class="note">尚未輸入定價</div>';
+}
+function lineAt(path){return path.split('.').reduce((a,k)=>a[k],S.cur)}
+function updateComputed(){
+  const r=S.cur;if(!r)return;
+  const total=sumLines(r.lines);
+  $$('tr[data-row]').forEach(tr=>{const L=lineAt(tr.dataset.row);const u=unitCost(L);const a=amount(L);
+    $('[data-o="unit"]',tr).textContent=u==null||(!u&&!L.qty)?'':u.toFixed(4)+' /'+(L.unit||'');
+    $('[data-o="amt"]',tr).textContent=(L.name||L.qty||a)?a.toFixed(2):'';
+    // refresh linked fields
+    ['kg','jin','pc'].forEach(k=>{const inp=$(`[data-p="${tr.dataset.row}.${k}"]`);if(inp&&L.link&&L.link.field===k&&document.activeElement!==inp){const m=S.master.get(L.link.id);if(m)inp.value=m.price??''}})});
+  const t=$('[data-o="total"]');if(t)t.textContent=money(total,2);
+  (r.subs||[]).forEach((b,bi)=>{const e=$(`[data-o="sub-subs.${bi}.lines"]`);if(!e)return;const s=sumLines(b.lines),q=b.lines.reduce((x,L)=>x+(+L.qty||0),0);e.textContent=money(s,2)+(q?'　／　'+(s/q).toFixed(4)+' 每'+(b.lines[0]?.unit||'單位'):'')});
+  $('#s-total').textContent=money(total,2);
+  $('#s-total-h').textContent=`${r.lines.filter(L=>L.name||L.qty).length} 項材料${+r.servings>1?'　·　'+r.servings+' 份':''}`;
+  const tr=r.targetRate||.3;
+  $('#s-sug').textContent=total?money(total/tr,0):'—';
+  $('#s-sug-h').textContent=`成本 ÷ ${pct(tr,0)}`;
+  r.prices.forEach((p,i)=>{const rate=+p.price>0&&total?total/p.price:null;const[c,tx]=rateClass(rate,tr);
+    const a=$(`[data-o="prate-${i}"]`),b=$(`[data-o="pgm-${i}"]`);
+    if(a)a.innerHTML=rate!=null?`<span class="pill ${c}">${pct(rate)} ${tx}</span>`:'<span class="note">—</span>';
+    if(b)b.textContent=rate!=null?'毛利 '+money(p.price-total,0):''});
+}
+function applyRO(){if(S.canWrite)return;$$('#app input,#app textarea,#app select,#app button.xbtn').forEach(e=>{if(e.tagName==='BUTTON')e.disabled=true;else e.readOnly=true});$$('[data-add],[data-addsub],[data-addprice]').forEach(b=>b.hidden=true)}
+function touch(){S.ver++;$('#savenote')&&($('#savenote').textContent='編輯中…');setStatus('busy','編輯中…');clearTimeout(S.timer);S.timer=setTimeout(flushNow,700)}
+async function flushNow(){
+  clearTimeout(S.timer);
+  if(!S.cur||!S.db||S.saving||S.ver===S.savedVer)return;
+  S.saving=true;
+  const id=S.curId;
+  try{
+    while(S.cur&&S.curId===id&&S.ver!==S.savedVer){
+      const v=S.ver,data=clean(S.cur);
+      await S.db.doc('recipes/'+id).set(data);
+      S.savedVer=v;S.savedJson=stable(data);
+    }
+    setStatus('','已儲存 '+hhmm());const n=$('#savenote');if(n)n.textContent='已儲存 '+hhmm();
+  }catch(e){setStatus('err','儲存失敗');const n=$('#savenote');if(n)n.textContent='儲存失敗';toast('儲存失敗：'+(e.message))}
+  finally{S.saving=false}
+}
+function setPath(p,v){const ks=p.split('.');const last=ks.pop();ks.reduce((a,k)=>a[k],S.cur)[last]=v}
+function bindEditor(){
+  const A=AREA;
+  A.oninput=e=>{
+    const el=e.target;if(!S.canWrite)return;
+    if(el.dataset.p){
+      let v=el.value;
+      if(el.dataset.t==='n'){v=v.trim()===''?null:parseFloat(v);if(v!=null&&isNaN(v))v=null}
+      else if(el.dataset.t==='pct'){v=el.value.trim()===''?null:parseFloat(el.value)/100;if(v!=null&&isNaN(v))v=null}
+      if(el.dataset.p==='targetRate'&&!v)v=0.3;
+      setPath(el.dataset.p,v);touch();updateComputed();
+    }
+  };
+  A.onchange=e=>{
+    const el=e.target;if(!S.canWrite)return;
+    if(el.dataset.free){(el.dataset.free==='n'?S.freeName:S.freeSup).delete(el.dataset.fpath);return}
+    if(el.dataset.nsel){
+      const path=el.dataset.nsel,L=lineAt(path),v=el.value;
+      if(v==='__cur')return;
+      if(v==='__new'){delete L.link;S.freeName.add(path);touch();renderEditorKeep();const t=$(`[data-row="${path}"] [data-free="n"]`);if(t)t.focus();return}
+      const m=S.master.get(v);if(!m)return;
+      const field=m.unit==='kg'?'kg':'pc';
+      L.name=m.name;L.kg=null;L.jin=null;L.pc=null;L.link={id:m.id,field};
+      if(field==='pc'&&!(+L.cap)){const c=parseCap(m.spec);if(c)L.cap=c}
+      if(!L.supplier&&m.vendor)L.supplier=m.vendor;
+      touch();renderEditorKeep();return;
+    }
+    if(el.dataset.ssel){
+      const path=el.dataset.ssel,L=lineAt(path),v=el.value;
+      if(v==='__new'){S.freeSup.add(path);renderEditorKeep();const t=$(`[data-row="${path}"] [data-free="s"]`);if(t)t.focus();return}
+      L.supplier=v;touch();return;
+    }
+    if(el.dataset.link){
+      const L=lineAt(el.dataset.link);const val=el.value.trim();
+      if(!val){delete L.link}
+      else{const m=[...S.master.values()].find(x=>masterLabel(x)===val);
+        if(!m){toast('原料單價表中找不到「'+val+'」');el.value=L.link&&S.master.get(L.link.id)?masterLabel(S.master.get(L.link.id)):'';return}
+        const field=m.unit==='kg'?'kg':'pc';
+        L.link={id:m.id,field};
+        if(!L.name)L.name=m.name;
+        if(field==='pc'&&!(+L.cap)){const c=parseCap(m.spec);if(c)L.cap=c}
+        if(!L.brand&&m.vendor)L.supplier=L.supplier||m.vendor;
+        L[field]=null;
+      }
+      touch();renderEditorKeep();
+    }
+  };
+  A.onclick=e=>{
+    const b=e.target.closest('button');if(!b||!S.canWrite&&!b.dataset.addprice)return;
+    const d=b.dataset;
+    if(d.unlink){delete lineAt(d.unlink).link;touch();renderEditorKeep()}
+    else if(d.del){const ks=d.del.split('.');const i=+ks.pop();const arr=ks.reduce((a,k)=>a[k],S.cur);arr.splice(i,1);touch();renderEditorKeep()}
+    else if(d.add){const arr=d.add.split('.').reduce((a,k)=>a[k],S.cur);arr.push(blankLine());S.focusNew=d.add+'.'+(arr.length-1);touch();renderEditorKeep()}
+    else if(d.addsub!==undefined){S.cur.subs.push({title:'',lines:[blankLine(),blankLine(),blankLine()]});touch();renderEditorKeep()}
+    else if(d.delsub!==undefined){armed(b,'sub'+d.delsub,()=>{S.cur.subs.splice(+d.delsub,1);touch();renderEditorKeep()},'確定刪除？')}
+    else if(d.addprice!==undefined){S.cur.prices.push({label:'',price:null});touch();renderPrices();updateComputed()}
+    else if(d.delprice!==undefined){S.cur.prices.splice(+d.delprice,1);touch();renderPrices();updateComputed()}
+    else if(b.id==='dup')dupRecipe();
+    else if(b.id==='delr')armed(b,'delr',delRecipe,'確定刪除？');
+  };
+}
+function renderEditorKeep(){const y=window.scrollY;renderEditor();window.scrollTo(0,y)}
+function armed(btn,key,fn,label){
+  if(S.arm[key]){clearTimeout(S.arm[key]);S.arm[key]=0;fn();return}
+  const old=btn.textContent;btn.textContent=label;btn.classList.add('arm');
+  S.arm[key]=setTimeout(()=>{S.arm[key]=0;btn.textContent=old;btn.classList.remove('arm')},3000);
+}
+async function dupRecipe(){
+  await flushNow();
+  const c=clean(S.cur);c.name=(c.name||'')+' 副本';c.order=Date.now();const id='r'+Date.now();
+  try{await S.db.doc('recipes/'+id).set(c);location.hash='#recipe-'+id;toast('已複製')}catch(e){toast('複製失敗：'+(e.code||e.message))}
+}
+async function delRecipe(){
+  const id=S.curId;clearTimeout(S.timer);S.cur=null;S.curId=null;
+  try{await S.db.doc('recipes/'+id).delete();location.hash='#recipes';toast('已刪除')}catch(e){toast('刪除失敗：'+(e.code||e.message))}
+}
+
+
+/* ---------- dashboard + ingredient matching ---------- */
+const normName=s=>String(s||'').toLowerCase().replace(/[\s　]/g,'').replace(/[（(][^）)]*[）)]/g,'').replace(/\d+(?:\.\d+)?\s*(?:kg|k|g|cc|ml|l|p|pc|入|包|盒|箱|%)(?:\/\w+)?/g,'').replace(/[\/\-_·,，、.%*]/g,'');
+function dice(a,b){if(a.length<2||b.length<2)return a===b?1:0;const bg=s=>{const m=new Map();for(let i=0;i<s.length-1;i++){const k=s.slice(i,i+2);m.set(k,(m.get(k)||0)+1)}return m};const A=bg(a),B=bg(b);let x=0;for(const[k,v]of A)x+=Math.min(v,B.get(k)||0);return 2*x/(a.length-1+b.length-1)}
+function nameScore(a,b){const na=normName(a),nb=normName(b);if(!na||!nb)return 0;if(na===nb)return 1;
+  if(na.length>=2&&nb.length>=2&&(na.includes(nb)||nb.includes(na)))return .7+.3*Math.min(na.length,nb.length)/Math.max(na.length,nb.length);return dice(na,nb)}
+function linkLine(L,m){const f=m.unit==='kg'?'kg':'pc';L.kg=null;L.jin=null;L.pc=null;L.link={id:m.id,field:f};if(f==='pc'){const c=parseCap(m.spec);if(c)L.cap=c}}
+function trialUnit(L,m){const c=JSON.parse(JSON.stringify(L));linkLine(c,m);return unitCost(c)}
+function unlinkedGroups(){
+  const g=new Map();
+  for(const r of S.recipes.values()){
+    const add=L=>{if(L.link||!(L.name||'').trim()||L.name==='(未命名)'||!(+L.qty>0))return;const k=normName(L.name)||L.name;
+      let e=g.get(k);if(!e){e={key:k,name:L.name.trim(),count:0,rids:new Set(),sample:null};g.set(k,e)}
+      e.count++;e.rids.add(r.id);if(!e.sample&&unitCost(L)>0)e.sample=L};
+    (r.lines||[]).forEach(add);(r.subs||[]).forEach(b=>(b.lines||[]).forEach(add));
+  }
+  const ms=[...S.master.values()].filter(m=>m.name);
+  return [...g.values()].map(e=>{
+    let best=null,bs=0;for(const m of ms){const sc=nameScore(e.name,m.name);if(sc>bs){bs=sc;best=m}}
+    let diff=null,conf='none';
+    if(best&&bs>=.5&&e.sample){const u1=unitCost(e.sample),u2=trialUnit(e.sample,best);if(u1>0&&u2>0)diff=u2/u1-1}
+    if(best&&bs>=.5){conf=(bs>=.999||(diff!=null&&Math.abs(diff)<=.03&&bs>=.55))?'high':'mid'}
+    return{...e,best:conf==='none'?null:best,score:bs,diff,conf}
+  }).sort((a,b)=>b.count-a.count);
+}
+async function applyLinks(items){
+  const map=new Map(items.map(i=>[i.key,i.mid]));let n=0;const changed=[];S.applying=true;setStatus('busy','對應中…');
+  try{
+    for(const r of [...S.recipes.values()]){
+      const doc=clean(stripId(r));let ch=false;
+      const fix=L=>{if(L.link||!(L.name||'').trim())return;const mid=map.get(normName(L.name)||L.name);const m=mid&&S.master.get(mid);if(!m)return;linkLine(L,m);ch=true;n++};
+      (doc.lines||[]).forEach(fix);(doc.subs||[]).forEach(b=>(b.lines||[]).forEach(fix));
+      if(ch)changed.push({id:r.id,...doc});
+    }
+    if(changed.length)await S.db.setMany(changed);
+    setStatus('','已儲存 '+hhmm());toast('已對應 '+n+' 列材料');
+  }catch(e){setStatus('err','對應失敗');toast('對應失敗：'+(e.message))}
+  finally{S.applying=false;renderDash()}
+}
+function renderDash(){
+  const all=[...S.recipes.values()];
+  const rows=all.map(r=>{const cost=sumLines(r.lines),p=primaryPrice(r);return{r,cost,p,rate:p&&cost?cost/p.price:null}});
+  const priced=rows.filter(x=>x.rate!=null);
+  const avg=priced.length?priced.reduce((t,x)=>t+x.rate,0)/priced.length:null;
+  const over=priced.filter(x=>x.rate>(x.r.targetRate||.3)+1e-9);
+  let nl=0,nt=0;for(const r of all)for(const L of (r.lines||[])){if(!(+L.qty>0))continue;nt++;if(L.link)nl++}
+  const top=[...priced].sort((a,b)=>b.rate-a.rate).slice(0,15);
+  const scale=Math.max(.5,...top.map(x=>x.rate))*1.05;
+  const tgt=.3;
+  const gm=new Map();for(const x of priced){const g=x.r.group||'未分類';const e=gm.get(g)||{n:0,t:0,o:0};e.n++;e.t+=x.rate;if(x.rate>(x.r.targetRate||.3)+1e-9)e.o++;gm.set(g,e)}
+  const dr=new Map();for(const r of all)for(const L of (r.lines||[])){const a=amount(L);if(!a||!(L.name||'').trim())continue;const k=normName(L.name)||L.name;const e=dr.get(k)||{name:L.name.trim(),n:0,t:0};e.n++;e.t+=a;dr.set(k,e)}
+  const drivers=[...dr.values()].sort((a,b)=>b.t-a.t).slice(0,10);
+  const ug=unlinkedGroups();const high=ug.filter(x=>x.conf==='high');
+  AREA.innerHTML=`
+  <div class="stats">
+    <div class="stat"><b>${all.length}</b><span>食譜數</span></div>
+    <div class="stat"><b>${pct(avg)}</b><span>平均成本率</span></div>
+    <div class="stat"><b>${over.length}</b><span>高於目標成本率</span></div>
+    <div class="stat"><b>${S.master.size}</b><span>原料品項</span></div>
+    <div class="stat"><b>${nt?Math.round(nl/nt*100)+'%':'—'}</b><span>材料已對應原料單價表</span></div>
+  </div>
+  ${all.length?'':'<div class="card empty sec"><b>還沒有資料</b>到「食譜」或「原料單價」分頁開始輸入，這裡會即時更新。</div>'}
+  <div class="dgrid">
+    <div class="card"><h3>成本率最高的食譜<small>前 ${top.length} 名・黑線為目標 ${pct(tgt,0)}</small></h3>
+      <div class="bars">${top.map(x=>{const[c,t]=rateClass(x.rate,x.r.targetRate);return `<a class="b ${c}" href="#recipe-${esc(x.r.id)}"><span class="nm2" title="${esc(x.r.name)}">${esc(x.r.name||'（未命名）')}</span><span class="track"><span class="fill" style="display:block;width:${Math.min(100,x.rate/scale*100)}%"></span><span class="tmark" style="left:${(x.r.targetRate||tgt)/scale*100}%"></span></span><span class="v">${pct(x.rate)} ${t}</span></a>`}).join('')||'<div class="note">尚無已定價的食譜</div>'}</div>
+      <div class="legend">成本率＝成本合計 ÷ 定價。達標、偏高（超過目標 5% 內）、超標以顏色與文字同時標示。</div></div>
+    <div class="card"><h3>分類比較</h3>
+      <table class="simple"><thead><tr><th>分類</th><th class="num">食譜數</th><th class="num">平均成本率</th><th class="num">超標</th></tr></thead><tbody>${[...gm].map(([g,e])=>`<tr><td>${esc(g)}</td><td class="num">${e.n}</td><td class="num">${pct(e.t/e.n)}</td><td class="num">${e.o}</td></tr>`).join('')||'<tr><td colspan="4" class="note">尚無資料</td></tr>'}</tbody></table>
+      <h3 style="margin-top:20px">成本占比最高的材料<small>各食譜單份金額加總</small></h3>
+      <table class="simple"><thead><tr><th>材料</th><th class="num">食譜數</th><th class="num">合計金額</th></tr></thead><tbody>${drivers.map(d=>`<tr><td>${esc(d.name)}</td><td class="num">${d.n}</td><td class="num">${money(d.t,1)}</td></tr>`).join('')||'<tr><td colspan="3" class="note">尚無資料</td></tr>'}</tbody></table></div>
+    <div class="card wide-card"><h3>材料對應原料單價表<small>${ug.length?ug.length+' 種材料尚未對應':'全部材料都已對應'}</small></h3>
+      <p class="note" style="margin:0 0 10px">對應後，改「原料單價」一處，所有食譜成本一起更新。系統依名稱與價格找出建議，「價差」是對應後單價相對目前單價的變化，請確認再套用。</p>
+      ${S.canWrite&&high.length?`<button class="btn pri" id="applyhigh" style="margin-bottom:12px">套用 ${high.length} 項高信心建議</button><span class="note" style="margin-left:10px">名稱相同，或名稱相近且價差在 3% 內</span>`:''}
+      ${ug.length?`<div class="tscroll"><table class="simple ltbl" style="min-width:0"><thead><tr><th>食譜中的材料</th><th class="num">列數</th><th style="min-width:240px">對應到</th><th class="num">價差</th><th></th></tr></thead><tbody>${ug.slice(0,60).map((g,i)=>{
+        const sel=S.dashSel[g.key]!==undefined?S.dashSel[g.key]:(g.best?masterLabel(g.best):'');
+        return `<tr data-k="${esc(g.key)}"><td data-l="食譜中的材料">${esc(g.name)}</td><td class="num" data-l="列數">${g.count}（${g.rids.size} 份食譜）</td>
+        <td data-l="對應到"><input class="field" list="dl-master" data-sel="${esc(g.key)}" value="${esc(sel)}" placeholder="輸入品名搜尋" aria-label="對應到原料"></td>
+        <td class="num" data-l="價差" data-diff>${diffCell(g,sel)}</td>
+        <td><button class="btn sm" data-lk="${esc(g.key)}" ${S.canWrite?'':'disabled'}>對應</button></td></tr>`}).join('')}</tbody></table></div>${ug.length>60?`<div class="note" style="margin-top:8px">只顯示列數最多的 60 種。</div>`:''}`:''}
+    </div>
+    <div class="card wide-card"><h3>備份與匯入<small>JSON 檔</small></h3>
+      <p class="note" style="margin:0 0 10px">資料本來就存在你的 Google 試算表，這裡的備份是額外保險。匯入時，編號相同的原料或食譜會被覆蓋，其他資料不會被刪除。</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="exp">匯出全部資料</button>
+      ${S.canWrite?'<button class="btn" id="impbtn">匯入 JSON…</button><input type="file" id="impf" accept="application/json,.json" hidden>':''}<span id="impbox" class="note"></span></div></div>
+  </div>`;
+  $('#exp').onclick=()=>{const d=new Date(),ds=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+    download('金春喜食譜成本備份-'+ds+'.json',JSON.stringify({master:[...S.master.values()],recipes:[...S.recipes.values()]},null,1),'application/json')};
+  const ib=$('#impbtn');if(ib){ib.onclick=()=>$('#impf').click();$('#impf').onchange=async e=>{const f=e.target.files[0];if(!f)return;let j;
+    try{j=JSON.parse(await f.text());if(!Array.isArray(j.master)||!Array.isArray(j.recipes))throw 0}catch(x){toast('檔案格式不正確');return}
+    const box=$('#impbox');box.innerHTML=`將匯入 ${j.master.length} 項原料、${j.recipes.length} 份食譜。 <button class="btn sm pri" id="impgo">確定匯入</button> <button class="btn sm" id="impno">取消</button>`;
+    $('#impno').onclick=()=>box.textContent='';
+    $('#impgo').onclick=async()=>{box.textContent='匯入中，請稍候…';S.applying=true;try{await API.call('importAll',{master:j.master,recipes:j.recipes});await loadAll();toast('匯入完成')}catch(x){toast('匯入失敗：'+x.message)}finally{S.applying=false;renderDash()}}}}
+  const hb=$('#applyhigh');if(hb)hb.onclick=()=>applyLinks(high.map(g=>({key:g.key,mid:g.best.id})));
+  AREA.oninput=e=>{const k=e.target.dataset&&e.target.dataset.sel;if(k===undefined)return;S.dashSel[k]=e.target.value;const g=ug.find(x=>x.key===k);const td=e.target.closest('tr').querySelector('[data-diff]');if(g&&td)td.innerHTML=diffCell(g,e.target.value)};
+  AREA.onclick=e=>{const b=e.target.closest('[data-lk]');if(!b)return;const k=b.dataset.lk;const g=ug.find(x=>x.key===k);const val=(S.dashSel[k]!==undefined?S.dashSel[k]:(g&&g.best?masterLabel(g.best):'')).trim();
+    const m=[...S.master.values()].find(x=>masterLabel(x)===val);if(!m){toast('請從清單選擇原料單價表中的品項');return}
+    delete S.dashSel[k];applyLinks([{key:k,mid:m.id}])};
+}
+function diffCell(g,val){
+  const m=[...S.master.values()].find(x=>masterLabel(x)===String(val||'').trim());
+  if(!m||!g.sample)return '<span class="note">—</span>';
+  const u1=unitCost(g.sample),u2=trialUnit(g.sample,m);
+  if(!(u1>0)||!(u2>0))return '<span class="note">無法比較</span>';
+  const d=u2/u1-1;return `<span class="diff ${Math.abs(d)<.005?'':d>0?'up':'dn'}">${d>0?'+':''}${(d*100).toFixed(1)}%</span>`;
+}
+
+/* ---------- master price list ---------- */
+const MCOLS=[['store','門市代碼'],['vendor','廠商'],['cat','分類'],['name','品名'],['spec','規格'],['unit','單位'],['price','單價']];
+function masterRowsFiltered(){
+  const q=S.mq.trim().toLowerCase();
+  return [...S.master.values()].filter(m=>(!S.mcat||m.cat===S.mcat)&&(!q||masterLabel(m).toLowerCase().includes(q)||(m.vendor||'').toLowerCase().includes(q))).sort((a,b)=>(a.order||0)-(b.order||0));
+}
+function renderMaster(){
+  const cats=[...new Set([...S.master.values()].map(m=>m.cat).filter(Boolean))];
+  AREA.innerHTML=`
+  <div class="bar" style="margin-top:22px">
+    <input class="field grow" id="mq" type="search" placeholder="搜尋品名或廠商" value="${esc(S.mq)}" aria-label="搜尋原料">
+    <select class="field" id="mcat" style="width:auto" aria-label="分類"><option value="">全部分類</option>${cats.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+    <button class="btn" id="mcsv">匯出 CSV</button>
+    ${S.canWrite?'<button class="btn pri" id="madd">＋ 新增原料</button>':''}
+  </div>
+  <p class="note" style="margin:0 0 10px">在這裡改單價，所有連結此原料的食譜成本會一起更新。每格離開後自動儲存。</p>
+  <div class="tscroll" id="mwrap"></div>
+  <datalist id="dl-vendor">${[...new Set([...S.master.values()].map(m=>m.vendor).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('')}</datalist>
+  <datalist id="dl-cat">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>`;
+  $('#mcat').value=S.mcat;
+  $('#mq').oninput=e=>{S.mq=e.target.value;S.mrendered='';syncMaster()};
+  $('#mcat').onchange=e=>{S.mcat=e.target.value;S.mrendered='';syncMaster()};
+  $('#mcsv').onclick=()=>exportCsv('原料單價.csv',[['門市代碼','廠商','分類','品名','規格','單位','單價'],...masterRowsFiltered().map(m=>[m.store,m.vendor,m.cat,m.name,m.spec,m.unit,m.price])]);
+  const ab=$('#madd');if(ab)ab.onclick=addMaster;
+  const w=$('#mwrap');
+  w.onchange=e=>{const el=e.target;if(!el.dataset.mid||!S.canWrite)return;
+    const f=el.dataset.f;let v=el.value;if(f==='price'){v=v.trim()===''?null:parseFloat(v);if(v!=null&&isNaN(v)){toast('單價請輸入數字');return}}
+    writeMaster(el.dataset.mid,{[f]:v})};
+  w.onclick=e=>{const b=e.target.closest('[data-mdel]');if(!b)return;armed(b,'m'+b.dataset.mdel,()=>S.db.doc('master/'+b.dataset.mdel).delete().catch(er=>toast('刪除失敗：'+(er.code||er.message))),'確定？')};
+  S.mrendered='';syncMaster();
+}
+const mw=new Map();
+function writeMaster(id,patch){
+  setStatus('busy','儲存中…');
+  const p=(mw.get(id)||Promise.resolve()).then(()=>S.db.doc('master/'+id).update(patch)).then(()=>setStatus('','已儲存 '+hhmm())).catch(e=>{setStatus('err','儲存失敗');toast('儲存失敗：'+(e.message))});
+  mw.set(id,p);
+}
+function syncMaster(){
+  const w=$('#mwrap');if(!w){return}
+  const rows=masterRowsFiltered(),use=usage();
+  const key=rows.map(m=>m.id).join(',');
+  if(key!==S.mrendered){
+    S.mrendered=key;
+    w.innerHTML=rows.length?`<table class="lt mt"><thead><tr>${MCOLS.map(([k,l])=>`<th>${l}</th>`).join('')}<th>使用中</th><th></th></tr></thead><tbody>${rows.map(m=>`<tr data-mrow="${m.id}">${MCOLS.map(([k,l])=>`<td data-l="${l}"><input class="cell${k==='price'?' n':''}" ${k==='vendor'?'list="dl-vendor"':''}${k==='cat'?'list="dl-cat"':''} data-mid="${m.id}" data-f="${k}" ${k==='price'?'inputmode="decimal"':''} aria-label="${l}"></td>`).join('')}<td class="use" data-l="使用中" data-use></td><td class="x"><button class="xbtn" data-mdel="${m.id}" aria-label="刪除原料">✕</button></td></tr>`).join('')}</tbody></table>`:`<div class="empty"><b>${S.master.size?'沒有符合的原料':'原料單價表是空的'}</b>${S.master.size?'':'按「新增原料」建立第一筆。'}</div>`;
+  }
+  $$('tr[data-mrow]',w).forEach(tr=>{const m=S.master.get(tr.dataset.mrow);if(!m)return;
+    $$('input[data-f]',tr).forEach(inp=>{if(document.activeElement!==inp)inp.value=m[inp.dataset.f]==null?'':m[inp.dataset.f]});
+    const n=use.get(m.id)||0;const u=$('[data-use]',tr);u.textContent=n?n+' 項':'—';
+    const del=$('[data-mdel]',tr);del.disabled=n>0||!S.canWrite;del.title=n>0?'有食譜使用中，無法刪除':'刪除'});
+  if(S.focusMid){const t=$(`[data-mid="${S.focusMid}"][data-f="name"]`);if(t){t.focus();S.focusMid=null}}
+}
+async function addMaster(){
+  const id='m'+Date.now();const min=Math.min(0,...[...S.master.values()].map(m=>m.order||0));
+  S.mq='';S.mcat='';S.focusMid=id;
+  try{await S.db.doc('master/'+id).set({store:'',vendor:'',cat:'',name:'',spec:'',unit:'',price:null,order:min-1});renderMaster()}catch(e){toast('無法新增：'+(e.code||e.message))}
+}
+window.addEventListener('pagehide',()=>flushNow());
+boot();
+</script>
+</body>
+</html>
