@@ -91,7 +91,11 @@ table.lt{border-collapse:collapse;width:100%;min-width:1240px}
 .lt th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:8px 4px;border-bottom:1px solid var(--line);background:var(--surface2);white-space:nowrap;position:sticky;top:0}
 .lt td{padding:2px 2px;border-bottom:1px solid var(--line);vertical-align:middle}
 .lt tr:last-child td{border-bottom:0}
-.lt td.idx{color:var(--muted);text-align:center;width:30px;font-variant-numeric:tabular-nums;font-size:12px}
+.lt td.idx{color:var(--muted);text-align:center;width:64px;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12px}
+.lt .seq{width:34px;text-align:center;padding:4px 2px}
+.mv{display:inline-flex;gap:0;vertical-align:middle}.mv .xbtn{padding:2px 4px;font-size:12px;min-width:22px}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}.chk input{width:18px;height:18px}
+.subuse{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:10px}.subuse label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}.subuse .num{width:110px}
 .cell{width:100%;min-width:0;border:1px solid transparent;border-radius:4px;background:transparent;padding:6px 6px;color:var(--fg)}
 .cell:hover{border-color:var(--line)} .cell:focus{background:var(--surface);border-color:transparent}
 .cell.n{text-align:right;font-family:var(--font-num);font-variant-numeric:tabular-nums}
@@ -156,7 +160,7 @@ table.simple tr:last-child td{border-bottom:0}
   .lt tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--surface)}
   .lt td{display:block;padding:0;border:0}
   .lt td::before{content:attr(data-l);display:block;font-size:11px;color:var(--muted)}
-  .lt td.idx{display:none} .lt td.wide{grid-column:1/-1}
+  .lt td.idx{grid-column:1/-1;display:flex;justify-content:flex-start;align-items:center;gap:6px;width:auto;text-align:left} .lt td.wide{grid-column:1/-1}
   .lt td.x{grid-column:1/-1;text-align:right} .lt td.x::before{display:none}
   .lt .cell{border-color:var(--line);background:var(--surface)}
   .out{text-align:left;padding:6px 0}
@@ -217,6 +221,15 @@ function amount(L){
   return u*(+L.qty);
 }
 const sumLines=a=>(a||[]).reduce((t,L)=>t+amount(L),0);
+const OFF='未上架',DEFAULT_GROUPS=['炸物小點','湯飯主餐',OFF];
+function subInfo(b){
+  const tot=sumLines(b.lines),q=(b.lines||[]).reduce((x,L)=>x+(+L.qty||0),0);
+  const batch=+b.batchQty>0?+b.batchQty:q;
+  const use=b.useQty==null||b.useQty===''?batch:+b.useQty;
+  const per=batch?tot/batch:0;
+  return{tot,q,batch,use,per,cost:b.include?per*use:0,unit:b.unit||(b.lines&&b.lines[0]&&b.lines[0].unit)||'g'};
+}
+const recipeCost=r=>sumLines(r.lines)+(r.subs||[]).reduce((t,b)=>t+subInfo(b).cost,0);
 const primaryPrice=r=>{const p=(r.prices||[]).filter(x=>+x.price>0);return p.find(x=>x.label==='定價')||p[0]||null};
 function rateClass(rate,target){
   if(rate==null)return['none','未定價'];
@@ -331,42 +344,52 @@ function route(){
 function loadCur(d){S.cur=clean(stripId(d));S.cur.lines=S.cur.lines||[];S.cur.subs=S.cur.subs||[];S.cur.prices=S.cur.prices||[];S.cur.sop=Array.isArray(S.cur.sop)?S.cur.sop.join('\n'):(S.cur.sop||'');S.savedJson=stable(clean(S.cur));S.ver=S.savedVer=0}
 
 /* ---------- recipe list ---------- */
-function renderList(){
+function listModel(){
   const all=[...S.recipes.values()];
-  const groups=[...new Set(all.map(r=>r.group).filter(Boolean))];
-  const rows=all.map(r=>{const cost=sumLines(r.lines),p=primaryPrice(r),rate=p&&cost?cost/p.price:null;return{r,cost,p,rate}});
+  const rows=all.map(r=>{const cost=recipeCost(r),p=primaryPrice(r),rate=p&&cost?cost/p.price:null;return{r,cost,p,rate}});
+  return{all,rows};
+}
+function renderListBody(){
+  const body=$('#lbody');if(!body)return;
+  const{all,rows}=listModel();
   const q=S.q.trim().toLowerCase();
-  let list=rows.filter(x=>(!S.group||x.r.group===S.group)&&(!q||(x.r.name||'').toLowerCase().includes(q)));
+  const list=rows.filter(x=>(!S.group||x.r.group===S.group)&&(!q||(x.r.name||'').toLowerCase().includes(q)));
   const cmp={name:(a,b)=>(a.r.order||0)-(b.r.order||0),rate:(a,b)=>(b.rate??-1)-(a.rate??-1),cost:(a,b)=>b.cost-a.cost};
-  list.sort(cmp[S.sort]);
-  const priced=rows.filter(x=>x.rate!=null);
+  list.sort(cmp[S.sort]);S.lastList=list;
+  body.innerHTML=list.length?`<div class="rh"><div>料理品名</div><div class="num">成本</div><div class="num">定價</div><div>成本率</div></div>`+list.map(({r,cost,p,rate})=>{const[c,t]=rateClass(rate,r.targetRate);
+      return `<a class="rr" href="#recipe-${esc(r.id)}"><div class="nm">${esc(r.name||'（未命名）')}<small>${esc(r.group||'未分類')} · ${(r.lines||[]).length} 項材料${(r.subs||[]).length?' · '+r.subs.length+' 組附屬配方':''}</small></div>
+      <div class="num" data-l="成本">${money(cost)}</div><div class="num" data-l="定價">${p?money(p.price,0):'—'}</div><div class="rate"><span class="pill ${c}">${rate!=null?pct(rate):'—'} ${t}</span></div></a>`}).join('')
+      :`<div class="empty"><b>${all.length?'沒有符合的食譜':'還沒有食譜'}</b>${all.length?'換個關鍵字或分類試試。':'按「新增食譜」開始輸入，原料單價可從「原料單價」分頁維護。'}</div>`;
+}
+function renderList(){
+  const qe=document.getElementById('q');
+  if(qe&&AREA.contains(qe)&&document.activeElement===qe){renderListBody();return}   // 輸入中（含中文輸入法組字）不要重畫輸入框
+  const{all,rows}=listModel();
+  const groups=[...new Set([...DEFAULT_GROUPS,...all.map(r=>r.group).filter(Boolean)])];
+  const priced=rows.filter(x=>x.rate!=null&&x.r.group!==OFF);
   const avg=priced.length?priced.reduce((t,x)=>t+x.rate,0)/priced.length:null;
   const over=priced.filter(x=>x.rate>(x.r.targetRate||.3)+1e-9).length;
   AREA.innerHTML=`
   <div class="stats">
     <div class="stat"><b>${all.length}</b><span>食譜數</span></div>
-    <div class="stat"><b>${pct(avg)}</b><span>平均成本率</span></div>
+    <div class="stat"><b>${pct(avg)}</b><span>平均成本率（不含未上架）</span></div>
     <div class="stat"><b>${over}</b><span>高於目標成本率</span></div>
     <div class="stat"><b>${S.master.size}</b><span>原料品項</span></div>
   </div>
   <div class="bar">
-    <input class="field grow" id="q" type="search" placeholder="搜尋料理品名" value="${esc(S.q)}" aria-label="搜尋料理品名">
+    <input class="field grow" id="q" type="search" placeholder="搜尋料理品名" value="${esc(S.q)}" aria-label="搜尋料理品名" autocomplete="off">
     <select class="field" id="sort" style="width:auto" aria-label="排序"><option value="name">依原表順序</option><option value="rate">成本率高→低</option><option value="cost">成本高→低</option></select>
     <button class="btn" id="csv">匯出 CSV</button>
     ${S.canWrite?'<button class="btn pri" id="newr">＋ 新增食譜</button>':''}
   </div>
   <div class="chips" id="chips"><button class="chip" aria-pressed="${!S.group}" data-g="">全部</button>${groups.map(g=>`<button class="chip" aria-pressed="${S.group===g}" data-g="${esc(g)}">${esc(g)}</button>`).join('')}</div>
-  <div class="card rlist sec" style="margin-top:14px">
-    ${list.length?`<div class="rh"><div>料理品名</div><div class="num">成本</div><div class="num">定價</div><div>成本率</div></div>`+list.map(({r,cost,p,rate})=>{const[c,t]=rateClass(rate,r.targetRate);
-      return `<a class="rr" href="#recipe-${esc(r.id)}"><div class="nm">${esc(r.name||'（未命名）')}<small>${esc(r.group||'未分類')} · ${(r.lines||[]).length} 項材料${(r.subs||[]).length?' · '+r.subs.length+' 組附屬配方':''}</small></div>
-      <div class="num" data-l="成本">${money(cost)}</div><div class="num" data-l="定價">${p?money(p.price,0):'—'}</div><div class="rate"><span class="pill ${c}">${rate!=null?pct(rate):'—'} ${t}</span></div></a>`}).join('')
-      :`<div class="empty"><b>${all.length?'沒有符合的食譜':'還沒有食譜'}</b>${all.length?'換個關鍵字或分類試試。':'按「新增食譜」開始輸入，原料單價可從「原料單價」分頁維護。'}</div>`}
-  </div>`;
+  <div class="card rlist sec" style="margin-top:14px" id="lbody"></div>`;
+  renderListBody();
   $('#sort').value=S.sort;
-  $('#q').oninput=e=>{S.q=e.target.value;const pos=e.target.selectionStart;renderList();const q=$('#q');q.focus();q.setSelectionRange(pos,pos)};
+  const qi=$('#q');qi.oninput=e=>{S.q=e.target.value;renderListBody()};qi.addEventListener('compositionend',e=>{S.q=e.target.value;renderListBody()});
   $('#sort').onchange=e=>{S.sort=e.target.value;renderList()};
   $('#chips').onclick=e=>{const b=e.target.closest('[data-g]');if(b){S.group=b.dataset.g;renderList()}};
-  $('#csv').onclick=()=>exportCsv('食譜成本總覽.csv',[['分類','料理品名','材料數','成本合計','定價','成本率','目標成本率','建議售價'],...list.map(({r,cost,p,rate})=>[r.group||'',r.name||'',(r.lines||[]).length,cost.toFixed(2),p?p.price:'',rate!=null?(rate*100).toFixed(1)+'%':'',((r.targetRate||.3)*100)+'%',cost?Math.round(cost/(r.targetRate||.3)):''])]);
+  $('#csv').onclick=()=>exportCsv('食譜成本總覽.csv',[['分類','料理品名','材料數','成本合計','定價','成本率','目標成本率','建議售價'],...(S.lastList||[]).map(({r,cost,p,rate})=>[r.group||'',r.name||'',(r.lines||[]).length,cost.toFixed(2),p?p.price:'',rate!=null?(rate*100).toFixed(1)+'%':'',((r.targetRate||.3)*100)+'%',cost?Math.round(cost/(r.targetRate||.3)):''])]);
   const nb=$('#newr');if(nb)nb.onclick=createRecipe;
 }
 async function createRecipe(){
@@ -386,7 +409,7 @@ function lineRow(path,L,i){
     return `<input class="cell n${linked?' linked':''}" inputmode="decimal" data-p="${path}.${i}.${k}" data-t="n" value="${v==null?'':v}" ${linked?'readonly title="來自原料單價表"':''} aria-label="${n}">`};
   const yv=L.yield==null?'':Math.round(L.yield*10000)/100;
   return `<tr data-row="${path}.${i}">
-  <td class="idx">${i+1}</td>
+  <td class="idx"><input class="cell seq" inputmode="numeric" data-seq="${path}.${i}" value="${i+1}" aria-label="項次（輸入數字可調整順序）" title="輸入新的項次後按 Enter，可調整順序"><span class="mv"><button class="xbtn" data-mv="${path}.${i}" data-dir="-1" aria-label="上移" title="上移"${i===0?' disabled':''}>↑</button><button class="xbtn" data-mv="${path}.${i}" data-dir="1" aria-label="下移" title="下移">↓</button></span></td>
   <td class="wide" data-l="材料名稱">${S.freeName.has(path+'.'+i)?`<input class="cell" data-p="${path}.${i}.name" data-free="n" data-fpath="${path}.${i}" value="${esc(L.name)}" placeholder="輸入材料名稱" aria-label="材料名稱">`:`<select class="cell sel" data-nsel="${path}.${i}" aria-label="材料名稱">${L.name?`<option value="__cur" selected>${esc(L.name)}</option>`:'<option value="" selected>— 選擇材料 —</option>'}${LISTS.names}<option value="__new">＋ 自行輸入…</option></select>`}${lk?`<div class="lk" title="${esc(masterLabel(lk))}">↳ ${esc(masterLabel(lk))} <button class="xbtn" data-unlink="${path}.${i}" title="取消對應" aria-label="取消對應">×</button></div>`:''}</td>
   <td data-l="使用量"><input class="cell n" inputmode="decimal" data-p="${path}.${i}.qty" data-t="n" value="${L.qty==null?'':L.qty}" aria-label="使用量"></td>
   <td data-l="單位"><input class="cell" list="dl-unit" data-p="${path}.${i}.unit" value="${esc(L.unit)}" aria-label="單位" style="width:56px"></td>
@@ -401,21 +424,22 @@ function lineRow(path,L,i){
   <td class="x"><button class="xbtn" data-del="${path}.${i}" aria-label="刪除此列" title="刪除此列">✕</button></td></tr>`;
 }
 function linesTable(path,lines,foot){
-  return `<div class="tscroll"><table class="lt"><thead><tr><th>#</th><th style="min-width:190px">材料名稱</th><th style="width:78px">使用量</th><th>單位</th><th style="width:76px">$ / KG</th><th style="width:76px">$ / 斤</th><th style="width:80px">$ / PC</th><th style="width:76px">容量</th><th style="width:70px">步留率 %</th><th>實際單價</th><th>金額</th><th style="min-width:80px">品牌</th><th style="min-width:120px">供應商</th><th style="min-width:90px">備註</th><th></th></tr></thead>
+  return `<div class="tscroll"><table class="lt"><thead><tr><th>項次</th><th style="min-width:190px">材料名稱</th><th style="width:78px">使用量</th><th>單位</th><th style="width:76px">$ / KG</th><th style="width:76px">$ / 斤</th><th style="width:80px">$ / PC</th><th style="width:76px">容量</th><th style="width:70px">步留率 %</th><th>實際單價</th><th>金額</th><th style="min-width:80px">品牌</th><th style="min-width:120px">供應商</th><th style="min-width:90px">備註</th><th></th></tr></thead>
   <tbody>${lines.map((L,i)=>lineRow(path,L,i)).join('')}</tbody>
   <tfoot><tr><td colspan="10" style="text-align:right">${foot}</td><td class="out amt" data-o="${path==='lines'?'total':'sub-'+path}" style="font-size:15px"></td><td colspan="4"></td></tr></tfoot></table></div>
   <div style="margin-top:8px"><button class="btn sm" data-add="${path}">＋ 新增一列</button></div>`;
 }
 function renderEditor(){
   const r=S.cur;if(!r)return;buildLists();
-  const groups=[...new Set([...S.recipes.values()].map(x=>x.group).filter(Boolean))];
+  if(S.fgId!==S.curId){S.freeGroup=false;S.fgId=S.curId}
+  const groups=[...new Set([...DEFAULT_GROUPS,...[...S.recipes.values()].map(x=>x.group).filter(Boolean),...(r.group?[r.group]:[])])];
   AREA.innerHTML=`
   <div class="crumb"><a href="#recipes">← 食譜列表</a><span class="sp"></span><span class="note" id="savenote"></span>
     ${S.canWrite?`<button class="btn sm" id="dup">複製此食譜</button><button class="btn sm danger" id="delr">刪除</button>`:''}</div>
   ${S.canWrite?'':'<div class="banner">你目前只有檢視權限，無法修改資料。</div>'}
   <input class="title-in" data-p="name" value="${esc(r.name)}" placeholder="料理品名" aria-label="料理品名">
   <div class="meta">
-    <div><label for="g">分類</label><input class="field" id="g" list="dl-group" data-p="group" value="${esc(r.group)}"><datalist id="dl-group">${groups.map(g=>`<option value="${esc(g)}">`).join('')}</datalist></div>
+    <div><label for="g">分類</label>${S.freeGroup?`<input class="field" id="g" data-p="group" data-gfree="1" value="${esc(r.group)}" placeholder="輸入新分類名稱">`:`<select class="field" id="g" data-gsel="1">${r.group?'':'<option value="" selected>— 選擇分類 —</option>'}${groups.map(g=>`<option value="${esc(g)}"${g===r.group?' selected':''}>${esc(g)}</option>`).join('')}<option value="__newg">＋ 新增分類…</option></select>`}</div>
     <div><label for="dt">日期（民國年.月）</label><input class="field" id="dt" data-p="date" value="${esc(r.date)}"></div>
     <div><label for="ds">設計者</label><input class="field" id="ds" data-p="designer" value="${esc(r.designer)}"></div>
     <div><label for="mk">製表人</label><input class="field" id="mk" data-p="maker" value="${esc(r.maker)}"></div>
@@ -429,9 +453,9 @@ function renderEditor(){
     <div class="card prices"><div class="lbl" style="margin-top:10px">定價與成本率</div><div id="prices"></div><button class="btn sm" data-addprice style="margin-top:6px">＋ 新增定價</button></div>
   </div>
   <h3 style="margin:22px 0 8px">材料明細</h3>
-  ${linesTable('lines',r.lines,'成本合計')}
+  ${linesTable('lines',r.lines,'材料小計')}
   <div id="subs"></div>
-  <div style="margin-top:14px"><button class="btn sm" data-addsub>＋ 新增附屬配方（醬料、半成品等，不計入上方成本）</button></div>
+  <div style="margin-top:14px"><button class="btn sm" data-addsub>＋ 新增附屬配方（醬料、半成品等，可選擇是否計入成本）</button></div>
   <h3 style="margin:26px 0 8px">製作流程 SOP</h3>
   <textarea class="field" data-p="sop" placeholder="每行一個步驟">${esc(r.sop)}</textarea>`;
   renderSubs();renderPrices();updateComputed();applyRO();
@@ -440,8 +464,9 @@ function renderEditor(){
 }
 function renderSubs(){
   const box=$('#subs');if(!box)return;
-  box.innerHTML=S.cur.subs.map((b,bi)=>`<div class="sub"><div class="hd"><h3>附屬配方</h3><input class="field" data-p="subs.${bi}.title" value="${esc(b.title)}" placeholder="名稱，例如：金沙預拌醬" aria-label="附屬配方名稱"><span class="note">不計入上方成本</span><button class="btn sm danger" data-delsub="${bi}">刪除此配方</button></div>
-  ${linesTable('subs.'+bi+'.lines',b.lines,'小計　／　每單位成本')}</div>`).join('');
+  box.innerHTML=S.cur.subs.map((b,bi)=>{const si=subInfo(b);return `<div class="sub"><div class="hd"><h3>附屬配方</h3><input class="field" data-p="subs.${bi}.title" value="${esc(b.title)}" placeholder="名稱，例如：金沙預拌醬" aria-label="附屬配方名稱"><label class="chk"><input type="checkbox" data-p="subs.${bi}.include" ${b.include?'checked':''}> 計入此食譜成本</label><button class="btn sm danger" data-delsub="${bi}">刪除此配方</button></div>
+  ${b.include?`<div class="subuse"><label>配方總產量<input class="field num" inputmode="decimal" data-p="subs.${bi}.batchQty" data-t="n" value="${b.batchQty==null?'':b.batchQty}" placeholder="${si.q?+si.q.toFixed(2):'產量'}" aria-label="配方總產量"></label><label>本食譜使用份量<input class="field num" inputmode="decimal" data-p="subs.${bi}.useQty" data-t="n" value="${b.useQty==null?'':b.useQty}" placeholder="${si.batch?+si.batch.toFixed(2):'份量'}" aria-label="本食譜使用份量"></label><label>單位<input class="field" list="dl-unit" data-p="subs.${bi}.unit" value="${esc(b.unit)}" placeholder="${esc(si.unit)}" aria-label="單位" style="width:70px"></label><span class="note" data-o="subinfo-${bi}"></span></div>`:'<div class="note" style="margin:-2px 0 8px">未計入成本；勾選後可輸入使用份量，系統依「小計 ÷ 配方總產量 × 使用份量」計算。</div>'}
+  ${linesTable('subs.'+bi+'.lines',b.lines,'小計　／　每單位成本')}</div>`}).join('');
 }
 function renderPrices(){
   const box=$('#prices');if(!box)return;
@@ -450,16 +475,16 @@ function renderPrices(){
 function lineAt(path){return path.split('.').reduce((a,k)=>a[k],S.cur)}
 function updateComputed(){
   const r=S.cur;if(!r)return;
-  const total=sumLines(r.lines);
+  const main=sumLines(r.lines),total=recipeCost(r);
   $$('tr[data-row]').forEach(tr=>{const L=lineAt(tr.dataset.row);const u=unitCost(L);const a=amount(L);
     $('[data-o="unit"]',tr).textContent=u==null||(!u&&!L.qty)?'':u.toFixed(4)+' /'+(L.unit||'');
     $('[data-o="amt"]',tr).textContent=(L.name||L.qty||a)?a.toFixed(2):'';
     // refresh linked fields
     ['kg','jin','pc'].forEach(k=>{const inp=$(`[data-p="${tr.dataset.row}.${k}"]`);if(inp&&L.link&&L.link.field===k&&document.activeElement!==inp){const m=S.master.get(L.link.id);if(m)inp.value=m.price??''}})});
-  const t=$('[data-o="total"]');if(t)t.textContent=money(total,2);
-  (r.subs||[]).forEach((b,bi)=>{const e=$(`[data-o="sub-subs.${bi}.lines"]`);if(!e)return;const s=sumLines(b.lines),q=b.lines.reduce((x,L)=>x+(+L.qty||0),0);e.textContent=money(s,2)+(q?'　／　'+(s/q).toFixed(4)+' 每'+(b.lines[0]?.unit||'單位'):'')});
+  const t=$('[data-o="total"]');if(t)t.textContent=money(main,2);
+  (r.subs||[]).forEach((b,bi)=>{const e=$(`[data-o="sub-subs.${bi}.lines"]`);if(!e)return;const si=subInfo(b);e.textContent=money(si.tot,2)+(si.q?'　／　'+(si.tot/si.q).toFixed(4)+' 每'+(b.lines[0]?.unit||'單位'):'');const n=$(`[data-o="subinfo-${bi}"]`);if(n)n.textContent=si.batch?`每 ${si.unit} ${si.per.toFixed(4)} 元　→　計入 ${money(si.cost,2)}`:'請先輸入材料使用量或配方總產量'});
   $('#s-total').textContent=money(total,2);
-  $('#s-total-h').textContent=`${r.lines.filter(L=>L.name||L.qty).length} 項材料${+r.servings>1?'　·　'+r.servings+' 份':''}`;
+  const subc=total-main;$('#s-total-h').textContent=`${r.lines.filter(L=>L.name||L.qty).length} 項材料${subc>0?'　·　含附屬配方 '+money(subc,2):''}${+r.servings>1?'　·　'+r.servings+' 份':''}`;
   const tr=r.targetRate||.3;
   $('#s-sug').textContent=total?money(total/tr,0):'—';
   $('#s-sug-h').textContent=`成本 ÷ ${pct(tr,0)}`;
@@ -490,6 +515,7 @@ function bindEditor(){
   const A=AREA;
   A.oninput=e=>{
     const el=e.target;if(!S.canWrite)return;
+    if(el.dataset.p&&el.type==='checkbox'){setPath(el.dataset.p,el.checked);touch();renderEditorKeep();return}
     if(el.dataset.p){
       let v=el.value;
       if(el.dataset.t==='n'){v=v.trim()===''?null:parseFloat(v);if(v!=null&&isNaN(v))v=null}
@@ -500,6 +526,9 @@ function bindEditor(){
   };
   A.onchange=e=>{
     const el=e.target;if(!S.canWrite)return;
+    if(el.dataset.gsel){if(el.value==='__newg'){S.freeGroup=true;renderEditorKeep();const t=$('#g');if(t)t.focus();return}S.cur.group=el.value;touch();return}
+    if(el.dataset.gfree){S.freeGroup=false;S.cur.group=el.value.trim();touch();renderEditorKeep();return}
+    if(el.dataset.seq){const ks=el.dataset.seq.split('.');const i=+ks.pop();moveLine(ks.join('.'),i,(parseInt(el.value,10)||i+1)-1);return}
     if(el.dataset.free){(el.dataset.free==='n'?S.freeName:S.freeSup).delete(el.dataset.fpath);return}
     if(el.dataset.nsel){
       const path=el.dataset.nsel,L=lineAt(path),v=el.value;
@@ -535,6 +564,7 @@ function bindEditor(){
   A.onclick=e=>{
     const b=e.target.closest('button');if(!b||!S.canWrite&&!b.dataset.addprice)return;
     const d=b.dataset;
+    if(d.mv){const ks=d.mv.split('.');const i=+ks.pop();moveLine(ks.join('.'),i,i+(+d.dir));return}
     if(d.unlink){delete lineAt(d.unlink).link;touch();renderEditorKeep()}
     else if(d.del){const ks=d.del.split('.');const i=+ks.pop();const arr=ks.reduce((a,k)=>a[k],S.cur);arr.splice(i,1);touch();renderEditorKeep()}
     else if(d.add){const arr=d.add.split('.').reduce((a,k)=>a[k],S.cur);arr.push(blankLine());S.focusNew=d.add+'.'+(arr.length-1);touch();renderEditorKeep()}
@@ -545,6 +575,14 @@ function bindEditor(){
     else if(b.id==='dup')dupRecipe();
     else if(b.id==='delr')armed(b,'delr',delRecipe,'確定刪除？');
   };
+}
+function moveLine(path,from,to){
+  const arr=path.split('.').reduce((a,k)=>a[k],S.cur);
+  to=Math.max(0,Math.min(arr.length-1,to));
+  if(to===from){renderEditorKeep();return}
+  arr.splice(to,0,arr.splice(from,1)[0]);
+  S.freeName.clear();S.freeSup.clear();touch();renderEditorKeep();
+  const f=$(`[data-seq="${path}.${to}"]`);if(f&&S.canWrite){const m=f.parentElement.querySelector(`[data-mv][data-dir="${to>from?1:-1}"]`);(m||f).focus()}
 }
 function renderEditorKeep(){const y=window.scrollY;renderEditor();window.scrollTo(0,y)}
 function armed(btn,key,fn,label){
@@ -602,8 +640,9 @@ async function applyLinks(items){
   finally{S.applying=false;renderDash()}
 }
 function renderDash(){
-  const all=[...S.recipes.values()];
-  const rows=all.map(r=>{const cost=sumLines(r.lines),p=primaryPrice(r);return{r,cost,p,rate:p&&cost?cost/p.price:null}});
+  const everyone=[...S.recipes.values()];
+  const all=everyone.filter(r=>r.group!==OFF),offN=everyone.length-all.length;
+  const rows=all.map(r=>{const cost=recipeCost(r),p=primaryPrice(r);return{r,cost,p,rate:p&&cost?cost/p.price:null}});
   const priced=rows.filter(x=>x.rate!=null);
   const avg=priced.length?priced.reduce((t,x)=>t+x.rate,0)/priced.length:null;
   const over=priced.filter(x=>x.rate>(x.r.targetRate||.3)+1e-9);
@@ -623,6 +662,7 @@ function renderDash(){
     <div class="stat"><b>${S.master.size}</b><span>原料品項</span></div>
     <div class="stat"><b>${nt?Math.round(nl/nt*100)+'%':'—'}</b><span>材料已對應原料單價表</span></div>
   </div>
+  ${offN?`<p class="note" style="margin:-6px 0 12px">另有 ${offN} 份「未上架」食譜，未計入以下統計。</p>`:''}
   ${all.length?'':'<div class="card empty sec"><b>還沒有資料</b>到「食譜」或「原料單價」分頁開始輸入，這裡會即時更新。</div>'}
   <div class="dgrid">
     <div class="card"><h3>成本率最高的食譜<small>前 ${top.length} 名・黑線為目標 ${pct(tgt,0)}</small></h3>
