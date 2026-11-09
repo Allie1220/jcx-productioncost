@@ -223,11 +223,12 @@ function amount(L){
 const sumLines=a=>(a||[]).reduce((t,L)=>t+amount(L),0);
 const OFF='未上架',DEFAULT_GROUPS=['炸物小點','湯飯主餐',OFF];
 function subInfo(b){
-  const tot=sumLines(b.lines),q=(b.lines||[]).reduce((x,L)=>x+(+L.qty||0),0);
-  const batch=+b.batchQty>0?+b.batchQty:q;
+  const src=b.ref?(S.recipes.get(b.ref)||{lines:[]}):b;
+  const tot=sumLines(src.lines),q=(src.lines||[]).reduce((x,L)=>x+(+L.qty||0),0);
+  const batch=+src.batchQty>0?+src.batchQty:q;
   const use=b.useQty==null||b.useQty===''?batch:+b.useQty;
   const per=batch?tot/batch:0;
-  return{tot,q,batch,use,per,cost:b.include?per*use:0,unit:b.unit||(b.lines&&b.lines[0]&&b.lines[0].unit)||'g'};
+  return{tot,q,batch,use,per,cost:b.include?per*use:0,unit:src.unit||(src.lines&&src.lines[0]&&src.lines[0].unit)||'g'};
 }
 const recipeCost=r=>sumLines(r.lines)+(r.subs||[]).reduce((t,b)=>t+subInfo(b).cost,0);
 const primaryPrice=r=>{const p=(r.prices||[]).filter(x=>+x.price>0);return p.find(x=>x.label==='定價')||p[0]||null};
@@ -345,7 +346,7 @@ function loadCur(d){S.cur=clean(stripId(d));S.cur.lines=S.cur.lines||[];S.cur.su
 
 /* ---------- recipe list ---------- */
 function listModel(){
-  const all=[...S.recipes.values()];
+  const all=[...S.recipes.values()].filter(r=>r.kind!=='sub');
   const rows=all.map(r=>{const cost=recipeCost(r),p=primaryPrice(r),rate=p&&cost?cost/p.price:null;return{r,cost,p,rate}});
   return{all,rows};
 }
@@ -383,7 +384,8 @@ function renderList(){
     ${S.canWrite?'<button class="btn pri" id="newr">＋ 新增食譜</button>':''}
   </div>
   <div class="chips" id="chips"><button class="chip" aria-pressed="${!S.group}" data-g="">全部</button>${groups.map(g=>`<button class="chip" aria-pressed="${S.group===g}" data-g="${esc(g)}">${esc(g)}</button>`).join('')}</div>
-  <div class="card rlist sec" style="margin-top:14px" id="lbody"></div>`;
+  <div class="card rlist sec" style="margin-top:14px" id="lbody"></div>
+  ${subLib().length?`<h3 style="margin:22px 0 8px">共用附屬配方</h3><div class="card rlist sec">${subLib().map(x=>`<a class="rr" href="#recipe-${esc(x.id)}" style="grid-template-columns:1fr auto"><div class="nm">${esc(x.name||'（未命名）')}<small>${(x.lines||[]).filter(L=>L.name||L.qty).length} 項材料 · 小計 ${money(sumLines(x.lines),2)}</small></div></a>`).join('')}</div>`:''}`;
   renderListBody();
   $('#sort').value=S.sort;
   const qi=$('#q');qi.oninput=e=>{S.q=e.target.value;renderListBody()};qi.addEventListener('compositionend',e=>{S.q=e.target.value;renderListBody()});
@@ -437,6 +439,7 @@ function renderEditor(){
   <div class="crumb"><a href="#recipes">← 食譜列表</a><span class="sp"></span><span class="note" id="savenote"></span>
     ${S.canWrite?`<button class="btn sm" id="dup">複製此食譜</button><button class="btn sm danger" id="delr">刪除</button>`:''}</div>
   ${S.canWrite?'':'<div class="banner">你目前只有檢視權限，無法修改資料。</div>'}
+  ${r.kind==='sub'?'<div class="banner">這是「共用附屬配方」：修改後，所有使用它的食譜成本會一起更新。在食譜編輯頁用「從共用配方加入」即可使用。</div>':''}
   <input class="title-in" data-p="name" value="${esc(r.name)}" placeholder="料理品名" aria-label="料理品名">
   <div class="meta">
     <div><label for="g">分類</label>${S.freeGroup?`<input class="field" id="g" data-p="group" data-gfree="1" value="${esc(r.group)}" placeholder="輸入新分類名稱">`:`<select class="field" id="g" data-gsel="1">${r.group?'':'<option value="" selected>— 選擇分類 —</option>'}${groups.map(g=>`<option value="${esc(g)}"${g===r.group?' selected':''}>${esc(g)}</option>`).join('')}<option value="__newg">＋ 新增分類…</option></select>`}</div>
@@ -462,11 +465,28 @@ function renderEditor(){
   bindEditor();
   if(S.focusNew){const t=$(`[data-row="${S.focusNew}"] [data-nsel]`)||$(`[data-row="${S.focusNew}"] [data-p$=".name"]`);if(t)t.focus();S.focusNew=null}
 }
+function subLib(){return [...S.recipes.values()].filter(r=>r.kind==='sub').sort((a,b)=>(a.order||0)-(b.order||0))}
 function renderSubs(){
   const box=$('#subs');if(!box)return;
-  box.innerHTML=S.cur.subs.map((b,bi)=>{const si=subInfo(b);return `<div class="sub"><div class="hd"><h3>附屬配方</h3><input class="field" data-p="subs.${bi}.title" value="${esc(b.title)}" placeholder="名稱，例如：金沙預拌醬" aria-label="附屬配方名稱"><label class="chk"><input type="checkbox" data-p="subs.${bi}.include" ${b.include?'checked':''}> 計入此食譜成本</label><button class="btn sm danger" data-delsub="${bi}">刪除此配方</button></div>
-  ${b.include?`<div class="subuse"><label>配方總產量<input class="field num" inputmode="decimal" data-p="subs.${bi}.batchQty" data-t="n" value="${b.batchQty==null?'':b.batchQty}" placeholder="${si.q?+si.q.toFixed(2):'產量'}" aria-label="配方總產量"></label><label>本食譜使用份量<input class="field num" inputmode="decimal" data-p="subs.${bi}.useQty" data-t="n" value="${b.useQty==null?'':b.useQty}" placeholder="${si.batch?+si.batch.toFixed(2):'份量'}" aria-label="本食譜使用份量"></label><label>單位<input class="field" list="dl-unit" data-p="subs.${bi}.unit" value="${esc(b.unit)}" placeholder="${esc(si.unit)}" aria-label="單位" style="width:70px"></label><span class="note" data-o="subinfo-${bi}"></span></div>`:'<div class="note" style="margin:-2px 0 8px">未計入成本；勾選後可輸入使用份量，系統依「小計 ÷ 配方總產量 × 使用份量」計算。</div>'}
-  ${linesTable('subs.'+bi+'.lines',b.lines,'小計　／　每單位成本')}</div>`}).join('');
+  const lib=subLib();
+  box.innerHTML=S.cur.subs.map((b,bi)=>{const si=subInfo(b);
+  const useRow=`<div class="subuse">${b.ref?`<span class="note">配方總產量 <b>${+si.batch.toFixed(2)} ${esc(si.unit)}</b>（來自共用配方）</span>`:`<label>配方總產量<input class="field num" inputmode="decimal" data-p="subs.${bi}.batchQty" data-t="n" value="${b.batchQty==null?'':b.batchQty}" placeholder="${si.q?+si.q.toFixed(2):'產量'}" aria-label="配方總產量"></label>`}<label>本食譜使用份量<input class="field num" inputmode="decimal" data-p="subs.${bi}.useQty" data-t="n" value="${b.useQty==null?'':b.useQty}" placeholder="${si.batch?+si.batch.toFixed(2):'份量'}" aria-label="本食譜使用份量"></label>${b.ref?`<span class="note">${esc(si.unit)}</span>`:`<label>單位<input class="field" list="dl-unit" data-p="subs.${bi}.unit" value="${esc(b.unit)}" placeholder="${esc(si.unit)}" aria-label="單位" style="width:70px"></label>`}<span class="note" data-o="subinfo-${bi}"></span></div>`;
+  const off='<div class="note" style="margin:-2px 0 8px">未計入成本；勾選後可輸入使用份量，系統依「小計 ÷ 配方總產量 × 使用份量」計算。</div>';
+  if(b.ref){const src=S.recipes.get(b.ref);
+    return `<div class="sub"><div class="hd"><h3>共用附屬配方</h3>${src?`<b>${esc(src.name||'（未命名）')}</b><a class="btn sm" href="#recipe-${esc(b.ref)}">編輯共用配方</a>`:'<span class="note">（這個共用配方已被刪除）</span>'}<label class="chk"><input type="checkbox" data-p="subs.${bi}.include" ${b.include?'checked':''}> 計入此食譜成本</label>${src?`<button class="btn sm" data-copysub="${bi}" title="變成只屬於這份食譜的獨立副本">轉為獨立副本</button>`:''}<button class="btn sm danger" data-delsub="${bi}">移除</button></div>
+    ${b.include?useRow:off}${src?`<div class="note" style="margin-bottom:6px">${(src.lines||[]).filter(L=>L.name||L.qty).length} 項材料，小計 ${money(si.tot,2)}，改共用配方會同步更新所有使用它的食譜。</div>`:''}</div>`}
+  return `<div class="sub"><div class="hd"><h3>附屬配方</h3><input class="field" data-p="subs.${bi}.title" value="${esc(b.title)}" placeholder="名稱，例如：金沙預拌醬" aria-label="附屬配方名稱"><label class="chk"><input type="checkbox" data-p="subs.${bi}.include" ${b.include?'checked':''}> 計入此食譜成本</label><button class="btn sm" data-savesub="${bi}" title="存成共用配方，其他食譜可直接加入">存為共用配方</button><button class="btn sm danger" data-delsub="${bi}">刪除此配方</button></div>
+  ${b.include?useRow:off}
+  ${linesTable('subs.'+bi+'.lines',b.lines,'小計　／　每單位成本')}</div>`}).join('')+(lib.length&&S.canWrite?`<div style="margin-top:14px"><select class="field" id="addref" style="width:auto" aria-label="從共用配方加入"><option value="">＋ 從共用配方加入…</option>${lib.map(x=>`<option value="${esc(x.id)}">${esc(x.name||'（未命名）')}</option>`).join('')}</select></div>`:'');
+}
+async function saveSub(bi){
+  const b=S.cur.subs[bi];const name=(b.title||'').trim();
+  if(!name){toast('請先為附屬配方輸入名稱');return}
+  const id='s'+Date.now();
+  const doc={name,group:'附屬配方',kind:'sub',servings:1,date:rocNow(),designer:'',maker:'',time:null,targetRate:0.3,prices:[],sop:'',subs:[],lines:clean(b.lines),batchQty:b.batchQty??null,unit:b.unit||'',order:Date.now()};
+  try{await S.db.doc('recipes/'+id).set(doc);S.recipes.set(id,{...doc,id});
+    S.cur.subs[bi]={ref:id,include:b.include,useQty:b.useQty??null};touch();renderEditorKeep();toast('已存為共用配方，其他食譜可從「從共用配方加入」使用')}
+  catch(e){toast('儲存失敗：'+(e.code||e.message))}
 }
 function renderPrices(){
   const box=$('#prices');if(!box)return;
@@ -482,7 +502,7 @@ function updateComputed(){
     // refresh linked fields
     ['kg','jin','pc'].forEach(k=>{const inp=$(`[data-p="${tr.dataset.row}.${k}"]`);if(inp&&L.link&&L.link.field===k&&document.activeElement!==inp){const m=S.master.get(L.link.id);if(m)inp.value=m.price??''}})});
   const t=$('[data-o="total"]');if(t)t.textContent=money(main,2);
-  (r.subs||[]).forEach((b,bi)=>{const e=$(`[data-o="sub-subs.${bi}.lines"]`);if(!e)return;const si=subInfo(b);e.textContent=money(si.tot,2)+(si.q?'　／　'+(si.tot/si.q).toFixed(4)+' 每'+(b.lines[0]?.unit||'單位'):'');const n=$(`[data-o="subinfo-${bi}"]`);if(n)n.textContent=si.batch?`每 ${si.unit} ${si.per.toFixed(4)} 元　→　計入 ${money(si.cost,2)}`:'請先輸入材料使用量或配方總產量'});
+  (r.subs||[]).forEach((b,bi)=>{const si=subInfo(b);const n0=$(`[data-o="subinfo-${bi}"]`);if(n0)n0.textContent=si.batch?`每 ${si.unit} ${si.per.toFixed(4)} 元　→　計入 ${money(si.cost,2)}`:'請先輸入材料使用量或配方總產量';const e=$(`[data-o="sub-subs.${bi}.lines"]`);if(!e)return;e.textContent=money(si.tot,2)+(si.q?'　／　'+(si.tot/si.q).toFixed(4)+' 每'+(b.lines[0]?.unit||'單位'):'');});
   $('#s-total').textContent=money(total,2);
   const subc=total-main;$('#s-total-h').textContent=`${r.lines.filter(L=>L.name||L.qty).length} 項材料${subc>0?'　·　含附屬配方 '+money(subc,2):''}${+r.servings>1?'　·　'+r.servings+' 份':''}`;
   const tr=r.targetRate||.3;
@@ -526,6 +546,7 @@ function bindEditor(){
   };
   A.onchange=e=>{
     const el=e.target;if(!S.canWrite)return;
+    if(el.id==='addref'){if(el.value){S.cur.subs.push({ref:el.value,include:true,useQty:null});touch();renderEditorKeep()}return}
     if(el.dataset.gsel){if(el.value==='__newg'){S.freeGroup=true;renderEditorKeep();const t=$('#g');if(t)t.focus();return}S.cur.group=el.value;touch();return}
     if(el.dataset.gfree){S.freeGroup=false;S.cur.group=el.value.trim();touch();renderEditorKeep();return}
     if(el.dataset.seq){const ks=el.dataset.seq.split('.');const i=+ks.pop();moveLine(ks.join('.'),i,(parseInt(el.value,10)||i+1)-1);return}
@@ -564,6 +585,8 @@ function bindEditor(){
   A.onclick=e=>{
     const b=e.target.closest('button');if(!b||!S.canWrite&&!b.dataset.addprice)return;
     const d=b.dataset;
+    if(d.savesub!==undefined){saveSub(+d.savesub);return}
+    if(d.copysub!==undefined){const i=+d.copysub,b=S.cur.subs[i],src=S.recipes.get(b.ref);if(src){S.cur.subs[i]={title:src.name||'',lines:clean(src.lines),batchQty:src.batchQty??null,unit:src.unit||'',include:b.include,useQty:b.useQty??null};touch();renderEditorKeep()}return}
     if(d.mv){const ks=d.mv.split('.');const i=+ks.pop();moveLine(ks.join('.'),i,i+(+d.dir));return}
     if(d.unlink){delete lineAt(d.unlink).link;touch();renderEditorKeep()}
     else if(d.del){const ks=d.del.split('.');const i=+ks.pop();const arr=ks.reduce((a,k)=>a[k],S.cur);arr.splice(i,1);touch();renderEditorKeep()}
@@ -640,7 +663,7 @@ async function applyLinks(items){
   finally{S.applying=false;renderDash()}
 }
 function renderDash(){
-  const everyone=[...S.recipes.values()];
+  const everyone=[...S.recipes.values()].filter(r=>r.kind!=='sub');
   const all=everyone.filter(r=>r.group!==OFF),offN=everyone.length-all.length;
   const rows=all.map(r=>{const cost=recipeCost(r),p=primaryPrice(r);return{r,cost,p,rate:p&&cost?cost/p.price:null}});
   const priced=rows.filter(x=>x.rate!=null);
