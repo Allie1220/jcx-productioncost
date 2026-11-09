@@ -94,6 +94,7 @@ table.lt{border-collapse:collapse;width:100%;min-width:1240px}
 .lt td.idx{color:var(--muted);text-align:center;width:64px;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12px}
 .lt .seq{width:34px;text-align:center;padding:4px 2px}
 .mv{display:inline-flex;gap:0;vertical-align:middle}.mv .xbtn{padding:2px 4px;font-size:12px;min-width:22px}
+.pt td.wide a{color:var(--fg);font-weight:600;text-decoration:none}.pt td.wide a:hover{text-decoration:underline}.pcell{display:flex;align-items:center;gap:8px}.pcell input{width:78px}.pt td{white-space:nowrap}
 .chk{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}.chk input{width:18px;height:18px}
 .subuse{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:10px}.subuse label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}.subuse .num{width:110px}
 .cell{width:100%;min-width:0;border:1px solid transparent;border-radius:4px;background:transparent;padding:6px 6px;color:var(--fg)}
@@ -177,7 +178,7 @@ table.simple tr:last-child td{border-bottom:0}
 <body>
 <header class="top"><div class="in">
   <a class="brand" href="#dashboard" style="color:inherit;text-decoration:none">金春喜<small>食譜成本輸入</small></a>
-  <nav aria-label="主選單"><a href="#dashboard" id="nav-dashboard">儀表板</a><a href="#recipes" id="nav-recipes">食譜</a><a href="#master" id="nav-master">原料單價</a></nav>
+  <nav aria-label="主選單"><a href="#dashboard" id="nav-dashboard">儀表板</a><a href="#recipes" id="nav-recipes">食譜</a><a href="#pricing" id="nav-pricing">定價總表</a><a href="#master" id="nav-master">原料單價</a></nav>
   <div class="status" id="status" role="status"><span class="dot busy" id="dot"></span><span id="stxt">未登入</span><button class="btn sm" id="logout" hidden>登出</button></div>
 </div></header>
 <main class="wrap" id="app"></main>
@@ -194,7 +195,7 @@ const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const S={db:null,user:null,canWrite:false,master:new Map(),recipes:new Map(),got:{m:false,r:false},cur:null,curId:null,
-  ver:0,savedVer:0,saving:false,timer:null,savedJson:'',q:'',group:'',sort:'name',mq:'',mcat:'',mrendered:'',focusMid:null,timeout:false,arm:{},dashSel:{},applying:false,pw:'',role:'',lastVer:0,poll:null,freeName:new Set(),freeSup:new Set()};
+  ver:0,savedVer:0,saving:false,timer:null,savedJson:'',q:'',group:'',sort:'name',pq:'',pgroup:'',psort:'name',extraLabels:[],mq:'',mcat:'',mrendered:'',focusMid:null,timeout:false,arm:{},dashSel:{},applying:false,pw:'',role:'',lastVer:0,poll:null,freeName:new Set(),freeSup:new Set()};
 let LISTS={names:'',sup:[]};
 function buildLists(){
   const by=new Map();for(const m of [...S.master.values()].filter(m=>m.name).sort((a,b)=>(a.order||0)-(b.order||0))){const c=m.cat||'未分類';(by.get(c)||by.set(c,[]).get(c)).push(m)}
@@ -312,6 +313,7 @@ function onData(which){
   const v=curView();
   if(v==='dashboard'){const a=document.activeElement;if(!(a&&a.tagName==='INPUT'&&AREA.contains(a))&&!S.applying)renderDash()}
   else if(v==='recipes')renderList();
+  else if(v==='pricing'){const a=document.activeElement;if(!(a&&a.tagName==='INPUT'&&AREA.contains(a)))renderPricing()}
   else if(v==='master')syncMaster();
   else if(v==='recipe'){
     if(S.cur&&which==='r'){
@@ -324,12 +326,12 @@ function onData(which){
 const stripId=d=>{const c={...d};delete c.id;return c};
 
 /* ---------- routing ---------- */
-function curView(){const h=location.hash.slice(1)||'dashboard';if(h.startsWith('recipe-'))return 'recipe';return h==='master'?'master':h==='recipes'?'recipes':'dashboard'}
+function curView(){const h=location.hash.slice(1)||'dashboard';if(h.startsWith('recipe-'))return 'recipe';return h==='master'?'master':h==='recipes'?'recipes':h==='pricing'?'pricing':'dashboard'}
 function route(){
   const prev=S.cur&&S.curId;
   if(prev&&curView()!=='recipe'||prev&&location.hash.slice(1)!=='recipe-'+prev){flushNow();S.cur=null;S.curId=null}
   const v=curView();
-  ['dashboard','recipes','master'].forEach(n=>$('#nav-'+n).setAttribute('aria-current',(v===n||(n==='recipes'&&v==='recipe'))?'page':'false'));
+  ['dashboard','recipes','pricing','master'].forEach(n=>$('#nav-'+n).setAttribute('aria-current',(v===n||(n==='recipes'&&v==='recipe'))?'page':'false'));
   $('#nav-master').setAttribute('aria-current',v==='master'?'page':'false');
   S.mrendered='';S.shown=false;
   if(!S.db){AREA.innerHTML=`<div class="empty" style="margin-top:60px"><b>需要登入才能使用共享資料</b>請以有編輯權限的帳號開啟此頁。</div>`;return}
@@ -338,6 +340,7 @@ function route(){
   S.shown=true;
   if(v==='dashboard')renderDash();
   else if(v==='recipes')renderList();
+  else if(v==='pricing')renderPricing();
   else if(v==='master')renderMaster();
   else{const id=location.hash.slice(8);const d=S.recipes.get(id);if(!d){S.shown=false;AREA.innerHTML=`<div class="empty" style="margin-top:60px"><b>找不到這份食譜</b><a href="#recipes">回到食譜列表</a></div>`;return}
     S.curId=id;loadCur(d);renderEditor()}
@@ -345,6 +348,68 @@ function route(){
 function loadCur(d){S.cur=clean(stripId(d));S.cur.lines=S.cur.lines||[];S.cur.subs=S.cur.subs||[];S.cur.prices=S.cur.prices||[];S.cur.sop=Array.isArray(S.cur.sop)?S.cur.sop.join('\n'):(S.cur.sop||'');S.savedJson=stable(clean(S.cur));S.ver=S.savedVer=0}
 
 /* ---------- recipe list ---------- */
+/* ---------- 定價總表 ---------- */
+function pricingModel(){
+  const rs=[...S.recipes.values()].filter(r=>r.kind!=='sub');
+  const cnt=new Map();rs.forEach(r=>(r.prices||[]).forEach(p=>{if(p.label)cnt.set(p.label,(cnt.get(p.label)||0)+1)}));
+  (S.extraLabels||[]).forEach(l=>{if(!cnt.has(l))cnt.set(l,0)});
+  const labels=[...cnt.keys()].sort((a,b)=>(a==='定價'?-1:b==='定價'?1:0)||cnt.get(b)-cnt.get(a));
+  return{rs,labels};
+}
+function priceOf(r,label){const p=(r.prices||[]).find(x=>x.label===label);return p&&+p.price>0?+p.price:null}
+function pcell(r,label,cost){
+  const v=priceOf(r,label),rate=v&&cost?cost/v:null,[c,t]=rateClass(rate,r.targetRate);
+  return `<td data-l="${esc(label)}"><div class="pcell"><input class="cell n" inputmode="decimal" data-pr="${esc(r.id)}" data-lb="${esc(label)}" value="${v==null?'':v}" aria-label="${esc(r.name||'')} ${esc(label)}"><span class="pr-rate">${rate!=null?`<span class="pill ${c}">${pct(rate)} ${t}</span>`:'<span class="note">—</span>'}</span></div></td>`;
+}
+function renderPricingBody(){
+  const body=$('#pbody');if(!body)return;
+  const{rs,labels}=pricingModel();
+  const q=S.pq.trim().toLowerCase();
+  const rows=rs.map(r=>({r,cost:recipeCost(r)})).filter(x=>(!S.pgroup||x.r.group===S.pgroup)&&(!q||(x.r.name||'').toLowerCase().includes(q)));
+  const key=x=>{const p=primaryPrice(x.r);return p&&x.cost?x.cost/p.price:-1};
+  if(S.psort==='rate')rows.sort((a,b)=>key(b)-key(a));else if(S.psort==='cost')rows.sort((a,b)=>b.cost-a.cost);else rows.sort((a,b)=>(a.r.order||0)-(b.r.order||0));
+  S.lastPricing={rows,labels};
+  body.innerHTML=rows.length?`<div class="tscroll"><table class="lt pt"><thead><tr><th style="min-width:190px">料理品名</th><th>分類</th><th>成本</th><th>目標</th><th>建議售價</th>${labels.map(l=>`<th style="min-width:170px">${esc(l)}　價格／成本率</th>`).join('')}</tr></thead><tbody>${rows.map(({r,cost})=>{const t=r.targetRate||.3;
+    return `<tr data-prow="${esc(r.id)}"><td class="wide" data-l="料理品名"><a href="#recipe-${esc(r.id)}">${esc(r.name||'（未命名）')}</a></td><td data-l="分類">${esc(r.group||'未分類')}</td><td class="num" data-l="成本">${money(cost,2)}</td><td class="num" data-l="目標">${pct(t,0)}</td><td class="num" data-l="建議售價">${cost?money(cost/t,0):'—'}</td>${labels.map(l=>pcell(r,l,cost)).join('')}</tr>`}).join('')}</tbody></table></div>`
+    :`<div class="empty"><b>${rs.length?'沒有符合的食譜':'還沒有食譜'}</b></div>`;
+  if(!S.canWrite)$$('input',body).forEach(i=>i.readOnly=true);
+}
+function renderPricing(){
+  const qe=document.getElementById('pq');
+  if(qe&&AREA.contains(qe)&&document.activeElement===qe){renderPricingBody();return}
+  const{rs}=pricingModel();
+  const groups=[...new Set([...DEFAULT_GROUPS,...rs.map(r=>r.group).filter(Boolean)])];
+  const priced=rs.filter(r=>r.group!==OFF&&primaryPrice(r)&&recipeCost(r));
+  const over=priced.filter(r=>recipeCost(r)/primaryPrice(r).price>(r.targetRate||.3)+1e-9).length;
+  AREA.innerHTML=`
+  <div class="stats"><div class="stat"><b>${rs.length}</b><span>食譜數</span></div><div class="stat"><b>${priced.length}</b><span>已有定價（不含未上架）</span></div><div class="stat"><b>${over}</b><span>成本率高於目標</span></div></div>
+  <p class="note" style="margin:0 0 10px">直接修改價格，離開欄位或按 Enter 就會存回該食譜的定價，成本率即時重算。成本含已勾選計入的附屬配方。</p>
+  <div class="bar">
+    <input class="field grow" id="pq" type="search" placeholder="搜尋料理品名" value="${esc(S.pq)}" aria-label="搜尋料理品名" autocomplete="off">
+    <select class="field" id="psort" style="width:auto" aria-label="排序"><option value="name">依原表順序</option><option value="rate">成本率高→低</option><option value="cost">成本高→低</option></select>
+    ${S.canWrite?'<input class="field" id="newlb" placeholder="新增價格欄位，如：外送價" style="width:170px" aria-label="新增價格欄位名稱"><button class="btn" id="addlb">新增欄位</button>':''}
+    <button class="btn" id="pcsv">匯出 CSV</button>
+  </div>
+  <div class="chips" id="pchips"><button class="chip" aria-pressed="${!S.pgroup}" data-g="">全部</button>${groups.map(g=>`<button class="chip" aria-pressed="${S.pgroup===g}" data-g="${esc(g)}">${esc(g)}</button>`).join('')}</div>
+  <div class="card sec" style="margin-top:14px" id="pbody"></div>`;
+  renderPricingBody();$('#psort').value=S.psort;
+  const qi=$('#pq');qi.oninput=e=>{S.pq=e.target.value;renderPricingBody()};qi.addEventListener('compositionend',e=>{S.pq=e.target.value;renderPricingBody()});
+  $('#psort').onchange=e=>{S.psort=e.target.value;renderPricing()};
+  $('#pchips').onclick=e=>{const b=e.target.closest('[data-g]');if(b){S.pgroup=b.dataset.g;renderPricing()}};
+  const ab=$('#addlb');if(ab)ab.onclick=()=>{const v=$('#newlb').value.trim();if(!v)return;(S.extraLabels=S.extraLabels||[]).push(v);renderPricing()};
+  $('#pcsv').onclick=()=>{const{rows,labels}=S.lastPricing||{rows:[],labels:[]};exportCsv('定價總表.csv',[['分類','料理品名','成本','目標成本率','建議售價',...labels.flatMap(l=>[l,l+' 成本率'])],...rows.map(({r,cost})=>[r.group||'',r.name||'',cost.toFixed(2),((r.targetRate||.3)*100)+'%',cost?Math.round(cost/(r.targetRate||.3)):'',...labels.flatMap(l=>{const v=priceOf(r,l);return[v??'',v&&cost?(cost/v*100).toFixed(1)+'%':'']})])])};
+  AREA.oninput=e=>{const el=e.target;if(!el.dataset.pr)return;
+    const r=S.recipes.get(el.dataset.pr);if(!r)return;const v=parseFloat(el.value),cost=recipeCost(r),rate=v>0&&cost?cost/v:null,[c,t]=rateClass(rate,r.targetRate);
+    el.closest('.pcell').querySelector('.pr-rate').innerHTML=rate!=null?`<span class="pill ${c}">${pct(rate)} ${t}</span>`:'<span class="note">—</span>'};
+  AREA.onchange=async e=>{const el=e.target;if(!el.dataset.pr||!S.canWrite)return;
+    const id=el.dataset.pr,label=el.dataset.lb,r=S.recipes.get(id);if(!r)return;
+    let v=el.value.trim()===''?null:parseFloat(el.value);if(v!=null&&(isNaN(v)||v<0))v=null;
+    const d=clean(stripId(r));d.prices=d.prices||[];
+    const p=d.prices.find(x=>x.label===label);
+    if(p)p.price=v;else if(v!=null)d.prices.push({label,price:v});else return;
+    try{setStatus('busy','儲存中…');await S.db.doc('recipes/'+id).set(d);setStatus('','已儲存 '+hhmm());el.value=v==null?'':v}
+    catch(err){setStatus('err','儲存失敗');toast('儲存失敗：'+(err.message||err.code))}};
+}
 function listModel(){
   const all=[...S.recipes.values()].filter(r=>r.kind!=='sub');
   const rows=all.map(r=>{const cost=recipeCost(r),p=primaryPrice(r),rate=p&&cost?cost/p.price:null;return{r,cost,p,rate}});
